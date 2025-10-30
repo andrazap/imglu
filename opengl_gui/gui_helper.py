@@ -68,7 +68,8 @@ def load_font(path = "/home/demoos/Downloads/Metropolis-SemiBold.otf", size = 64
 
     glBindTexture(GL_TEXTURE_2D, 0)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
-    font["size"] = size     
+    font["size"] = size
+    font["line_height"] = (face.ascender - face.descender) >> 6
 
     return font
 

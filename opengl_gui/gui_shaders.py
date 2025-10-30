@@ -38,29 +38,29 @@ class DefaultShader(ShaderProgram):
         self.fs = \
         """
             #version 450 
-            uniform vec4 colour;
+            uniform vec4 color;
             in float highlight;
 
-            out vec4 fragColour;
+            out vec4 fragColor;
 
             void main()
             {
-                fragColour = colour;
-                fragColour[0] = clamp(fragColour[0]*highlight, 0.0, 1.0);
-                fragColour[1] = clamp(fragColour[1]*highlight, 0.0, 1.0);
-                fragColour[2] = clamp(fragColour[2]*highlight, 0.0, 1.0);
+                fragColor = color;
+                fragColor[0] = clamp(fragColor[0]*highlight, 0.0, 1.0);
+                fragColor[1] = clamp(fragColor[1]*highlight, 0.0, 1.0);
+                fragColor[2] = clamp(fragColor[2]*highlight, 0.0, 1.0);
             }
         """
 
     def generate_uniform_functions(self):
 
         self.transform_uniform_location = glGetUniformLocation(self.shader_program, "transform")
-        self.colour_uniform_location = glGetUniformLocation(self.shader_program, "colour")
+        self.color_uniform_location = glGetUniformLocation(self.shader_program, "color")
         self.properties_uniform_location = glGetUniformLocation(self.shader_program, "properties")
         
 
         self.uniform_functions["transform"] = lambda M: glUniformMatrix3fv(self.transform_uniform_location, 1, GL_TRUE, M)
-        self.uniform_functions["colour"]    = lambda C: glUniform4fv(self.colour_uniform_location, 1, C)
+        self.uniform_functions["color"]    = lambda C: glUniform4fv(self.color_uniform_location, 1, C)
         self.uniform_functions["properties"] = lambda P: glUniform2fv(self.properties_uniform_location, 1, P)
 
 
@@ -91,26 +91,26 @@ class TextShader(ShaderProgram):
         self.fs = \
         """
             #version 450 
-            uniform vec4 colour;
+            uniform vec4 color;
             uniform sampler2D text;
 
             in vec2 texCoordOut;
-            out vec4 fragColour;
+            out vec4 fragColor;
 
             void main()
             {
-                fragColour = vec4(vec3(colour), texture(text, texCoordOut).r);
+                fragColor = vec4(vec3(color), texture(text, texCoordOut).r);
             }
         """
 
     def generate_uniform_functions(self):
 
         self.transform_uniform_location = glGetUniformLocation(self.shader_program, "transform")
-        self.colour_uniform_location = glGetUniformLocation(self.shader_program, "colour")
+        self.color_uniform_location = glGetUniformLocation(self.shader_program, "color")
         self.depth_uniform_location  = glGetUniformLocation(self.shader_program, "depth")
 
         self.uniform_functions["transform"] = lambda M: glUniformMatrix3fv(self.transform_uniform_location, 1, GL_TRUE, M)
-        self.uniform_functions["colour"]    = lambda C: glUniform4fv(self.colour_uniform_location, 1, C)
+        self.uniform_functions["color"]    = lambda C: glUniform4fv(self.color_uniform_location, 1, C)
         self.uniform_functions["depth"]    = lambda D: glUniform1f(self.depth_uniform_location, D)
 
         return self
@@ -146,13 +146,13 @@ class TextureShaderBGR(ShaderProgram):
             in float alpha;
 
             in vec2 texCoordOut;
-            out vec4 fragColour;
+            out vec4 fragColor;
 
             void main()
             {
                 vec3 tmp = vec3(texture(text, texCoordOut));
 
-                fragColour = vec4(tmp, alpha);
+                fragColor = vec4(tmp, alpha);
             }
         """
 
@@ -193,27 +193,27 @@ class TextureShaderR(ShaderProgram):
         """
             #version 450 
             uniform sampler2D text;
-            uniform vec4 colour;
+            uniform vec4 color;
 
             in vec2 texCoordOut;
-            out vec4 fragColour;
+            out vec4 fragColor;
 
             void main()
             {
                 vec4 cl = vec4(texture(text, texCoordOut));
                 
-                fragColour = vec4(vec3(colour), cl[0]*colour[3]);
+                fragColor = vec4(vec3(color), cl[0]*color[3]);
             }
         """
 
     def generate_uniform_functions(self):
 
         self.transform_uniform_location = glGetUniformLocation(self.shader_program, "transform")
-        self.colour_uniform_location = glGetUniformLocation(self.shader_program, "colour")
+        self.color_uniform_location = glGetUniformLocation(self.shader_program, "color")
         self.depth_uniform_location  = glGetUniformLocation(self.shader_program, "depth")
 
         self.uniform_functions["transform"] = lambda M: glUniformMatrix3fv(self.transform_uniform_location, 1, GL_TRUE, M)
-        self.uniform_functions["colour"]    = lambda C: glUniform4fv(self.colour_uniform_location, 1, C)
+        self.uniform_functions["color"]    = lambda C: glUniform4fv(self.color_uniform_location, 1, C)
         self.uniform_functions["depth"]     = lambda D: glUniform1f(self.depth_uniform_location, D)
 
         return self
@@ -246,11 +246,11 @@ class CircleShader(DefaultShader):
         self.fs = \
         """
             #version 450 
-            uniform vec4 colour;
+            uniform vec4 color;
             in float highlight;
 
             in vec2 fragPosition;
-            out vec4 fragColour;
+            out vec4 fragColor;
 
             void main()
             {
@@ -258,22 +258,22 @@ class CircleShader(DefaultShader):
                 float alpha0 = 1.0f - smoothstep(1.0 - fwidth(inside), 1.0, inside);
                 //float alpha1 = smoothstep(0.8 - fwidth(inside), 0.8, inside);
 
-                fragColour = colour;
-                fragColour[0] = clamp(fragColour[0]*highlight, 0.0, 1.0);
-                fragColour[1] = clamp(fragColour[1]*highlight, 0.0, 1.0);
-                fragColour[2] = clamp(fragColour[2]*highlight, 0.0, 1.0);
-                fragColour[3] = alpha0;
+                fragColor = color;
+                fragColor[0] = clamp(fragColor[0]*highlight, 0.0, 1.0);
+                fragColor[1] = clamp(fragColor[1]*highlight, 0.0, 1.0);
+                fragColor[2] = clamp(fragColor[2]*highlight, 0.0, 1.0);
+                fragColor[3] = alpha0;
             }
         """
 
     def generate_uniform_functions(self):
 
         self.transform_uniform_location  = glGetUniformLocation(self.shader_program, "transform")
-        self.colour_uniform_location     = glGetUniformLocation(self.shader_program, "colour")
+        self.color_uniform_location     = glGetUniformLocation(self.shader_program, "color")
         self.properties_uniform_location = glGetUniformLocation(self.shader_program, "properties")
 
         self.uniform_functions["transform"] = lambda M: glUniformMatrix3fv(self.transform_uniform_location, 1, GL_TRUE, M)
-        self.uniform_functions["colour"]    = lambda C: glUniform4fv(self.colour_uniform_location, 1, C)
+        self.uniform_functions["color"]    = lambda C: glUniform4fv(self.color_uniform_location, 1, C)
         self.uniform_functions["properties"] = lambda P: glUniform2fv(self.properties_uniform_location, 1, P)
 
         return self
@@ -313,7 +313,7 @@ class LoadingShader(ShaderProgram):
 
             in vec2 fragmentPosition;
             in vec2 texCoord;
-            out vec4 fragmentColour;
+            out vec4 fragmentColor;
 
             // Stage 0
 
@@ -351,7 +351,7 @@ class LoadingShader(ShaderProgram):
                     float d = fx*fx + (fy + yoffset)*(fy + yoffset);
                     bool a = (d >= r0) && (d <= r1);
         
-                    fragmentColour = vec4(vicosRed, a ? 1.0f : 0.0f);
+                    fragmentColor = vec4(vicosRed, a ? 1.0f : 0.0f);
                 }
                 else if ((stage == 1) && (timeStage <= duration))
                 {
@@ -369,20 +369,20 @@ class LoadingShader(ShaderProgram):
 
                     if (a1)
                     {
-                        fragmentColour = vec4(vicosRed, 1.0f);
+                        fragmentColor = vec4(vicosRed, 1.0f);
                     }
                     else if (a2)
                     {
-                        fragmentColour = vec4(vec3(texture(textureSampler, texCoord)), 1.0f);
+                        fragmentColor = vec4(vec3(texture(textureSampler, texCoord)), 1.0f);
                     }
                     else
                     {
-                        fragmentColour = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+                        fragmentColor = vec4(0.0f, 0.0f, 0.0f, 0.0f);
                     }
                 }
                 else
                 {
-                    fragmentColour = vec4(vec3(texture(textureSampler, texCoord)), 1.0f);
+                    fragmentColor = vec4(vec3(texture(textureSampler, texCoord)), 1.0f);
                 }
             }
         """
@@ -428,7 +428,7 @@ class MenuDrawerShader(ShaderProgram):
             uniform int pressed;
 
             in vec2 fPosition;
-            out vec4 fragmentColour;
+            out vec4 fragmentColor;
 
             float b = 0.04f;
 
@@ -461,7 +461,7 @@ class MenuDrawerShader(ShaderProgram):
                     a += float(!small && big || (isClick && big));
                 }
 
-                fragmentColour = vec4(1.0f, 1.0f, 1.0f, a);
+                fragmentColor = vec4(1.0f, 1.0f, 1.0f, a);
             }
         """
 
