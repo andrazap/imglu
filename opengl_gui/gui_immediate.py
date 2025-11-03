@@ -381,7 +381,7 @@ class Gui():
             if end is not None or start is None:
                 self._drawer_state[key][2] = False
                 if side == 'left' or side == 'top':
-                    self._drawer_state[key][1] = pos[prop] - (offset_content - scale[prop]) < (scale[prop] - offset_content)/2
+                    self._drawer_state[key][1] = -pos[prop]  < (scale[prop] - offset_content)/2
                 else:
                     self._drawer_state[key][1] = 1 - offset_content - pos[prop] > (scale[prop] - offset_content)/2
                 consume()

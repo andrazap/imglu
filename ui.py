@@ -8,18 +8,28 @@ class ViCoS():
 
 def setup(state):
     state.i = 0
+    state.setDrawer = []
     return Gui(
         fullscreen = False,
         width = 960,
         height = 690,
         font="./Metropolis-SemiBold.otf")
 
-def draw(gui: Gui, state):
-    with gui.Container(position=[0,0], scale=[1,1], color=[0,1,0,1]):
+def draw(gui, state):
+    with gui.Container(position=[0,0], scale=[1,1], color=[0,1,0,1], depth=0):
         gui.Text('Wow gee', align='right')
+        
+        # we only need to set it once, otherwise it is locked in that state
+        force_drawer = None if len(state.setDrawer) == 0 else state.setDrawer.pop()
+        with gui.Drawer('icon', scale=[0.5,0.5], side='right', offset_edge=0.5, offset_content=0.1, color=[1,0.5,0,1], depth=1, force_state=force_drawer) as (grabbed, isOpen):
+            gui.Image(icon)
+        if gui.Button('Close drawer' if isOpen else 'Open drawer', position=[0, 0.75], scale=[0.25,0.25], color=[0,0,1,1]):
+            state.setDrawer.append(not isOpen)
+        
         with gui.Container(position=[0.25,0.5], scale=[0.5,0.5]):
             gui.Text('Wow gee wilicker')
             if gui.Button('Yippie!', color=ViCoS.RED):
                 print('Pressed', state.i)
                 state.i += 1
-        gui.Image(icon)
+        with gui.Container(scale=[0.5,0.5], color=[0,0,0,1]):
+            pass
