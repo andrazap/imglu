@@ -31,7 +31,7 @@ class DefaultShader(ShaderProgram):
             {
                 highlight = properties[1];
                 vec3 tmp = transform*vec3(position,1.0);
-                gl_Position = vec4(tmp.x, tmp.y, 0.0, tmp.z);
+                gl_Position = vec4(tmp.x, tmp.y, properties[0], tmp.z);
             }
         """
 
@@ -83,7 +83,7 @@ class TextShader(ShaderProgram):
             void main()
             {
                 vec3 tmp = transform*vec3(position,1.0);
-                gl_Position = vec4(tmp.x,tmp.y,0.0,tmp.z);
+                gl_Position = vec4(tmp.x,tmp.y,depth,tmp.z);
                 texCoordOut = texCoordIn;
             }
         """
@@ -134,7 +134,7 @@ class TextureShaderBGR(ShaderProgram):
             {
                 alpha = properties[1];
                 vec3 tmp = transform*vec3(position,1.0);
-                gl_Position = vec4(tmp.x,tmp.y,0.0,tmp.z);
+                gl_Position = vec4(tmp.x,tmp.y,properties[0],tmp.z);
                 texCoordOut = texCoordIn;
             }
         """
@@ -184,7 +184,7 @@ class TextureShaderR(ShaderProgram):
             void main()
             {
                 vec3 tmp = transform*vec3(position,1.0);
-                gl_Position = vec4(tmp.x,tmp.y,0.0,tmp.z);
+                gl_Position = vec4(tmp.x,tmp.y,depth,tmp.z);
                 texCoordOut = texCoordIn;
             }
         """
@@ -239,7 +239,7 @@ class CircleShader(DefaultShader):
 
                 fragPosition = position;
                 vec3 tmp = transform*vec3(position,1.0);
-                gl_Position = vec4(tmp.x,tmp.y,0.0,tmp.z);
+                gl_Position = vec4(tmp.x,tmp.y,properties[0],tmp.z);
             }
         """
 
@@ -300,7 +300,7 @@ class LoadingShader(ShaderProgram):
                 fragmentPosition = position;
                 texCoord = texCoordIn;
                 vec3 tmp = transform*vec3(position,1.0);
-                gl_Position = vec4(tmp.x,tmp.y,0.0,tmp.z);
+                gl_Position = vec4(tmp.x,tmp.y,depth,tmp.z);
             }
         """
 
@@ -398,79 +398,5 @@ class LoadingShader(ShaderProgram):
         self.uniform_functions["stage"]     = lambda S: glUniform1i(self.stageUniformLocation, S)
         self.uniform_functions["depth"]     = lambda D: glUniform1f(self.depth_uniform_location, D)
         self.uniform_functions["animation_details"] = lambda D: glUniform4fv(self.animation_detailsUniformLocation, 1, D)
-
-        return self
-
-class MenuDrawerShader(ShaderProgram):
-
-    def __init__(self):
-        super(MenuDrawerShader, self).__init__()
-
-        self.vs = \
-        """
-            #version 450 
-            uniform mat3 transform;
-
-            layout (location = 0) in vec2 position;
-            out vec2 fPosition;
-
-            void main()
-            {
-                fPosition = (position + 1.0f)*0.5f;
-                vec3 tmp = transform*vec3(position,1.0);
-                gl_Position = vec4(tmp.x,tmp.y,0.0,tmp.z);
-            }
-        """
-
-        self.fs = \
-        """
-            #version 450 
-            uniform int pressed;
-
-            in vec2 fPosition;
-            out vec4 fragmentColor;
-
-            float b = 0.04f;
-
-            void main()
-            {
-                bool isClick = pressed == 1;
-
-                float x = fPosition[0];
-                float y = fPosition[1];
-
-                int L = 3;
-                float s = 1.0f/(2.0f*L - 1.0f);
-
-                float a = 0.0f;
-                for (int i = 0; i < L; i++)
-                {
-                    float sTop = float(i)*2.0f*s;
-                    float sBot = s + sTop;
-
-                    bool big = y <= 1.0f - sTop && 
-                               y >= 1.0f - sBot &&
-                               x <= 1.0f &&
-                               x >= 0.0f;
-                    bool small = y <= 1.0f - sTop - b && 
-                                 y >= 1.0f - sBot + b &&
-                                 x <= 1.0f - b &&
-                                 x >= b;  
-
-                  
-                    a += float(!small && big || (isClick && big));
-                }
-
-                fragmentColor = vec4(1.0f, 1.0f, 1.0f, a);
-            }
-        """
-
-    def generate_uniform_functions(self):
-
-        self.transform_uniform_location = glGetUniformLocation(self.shader_program, "transform")
-        self.pressed_uniform_location   = glGetUniformLocation(self.shader_program, "pressed")
-
-        self.uniform_functions["transform"] = lambda M: glUniformMatrix3fv(self.transform_uniform_location, 1, GL_TRUE, M)
-        self.uniform_functions["pressed"] = lambda A: glUniform1i(self.pressed_uniform_location, A)
 
         return self

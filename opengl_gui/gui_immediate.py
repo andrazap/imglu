@@ -49,6 +49,7 @@ class Gui():
         self.time_fps = time.time()
         self.time_from_start = time.time()
 
+        self.depth = 0
         self.transform       = np.array([[2,0,-1],
                                           [0,-2,1],
                                           [0,0,1]])
@@ -81,6 +82,11 @@ class Gui():
         glfw.set_key_callback(self.window, self.key_press_event_callback)
      
         glfw.swap_interval(1)
+
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_GEQUAL)
+        glDepthRange(0.0,1.0)
+        glClearDepth(0.0)
 
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -176,9 +182,11 @@ class Gui():
                                         [0,        0,           1]])
 
     @contextmanager
-    def Container(self, position=[0,0], scale=[1,1], color=[0,0,0,0], depth=0.99, alpha=1.0):
+    def Container(self, position=[0,0], scale=[1,1], color=[0,0,0,0], depth=0, alpha=1.0):
         old_transform = self.transform
         self.transform = self.derive_transform(old_transform, position, scale)
+        old_depth = self.depth
+        self.depth = old_depth + (1 - old_depth) * depth
         
         try:    
             glUseProgram(self.shaders.default.shader_program)
@@ -189,8 +197,9 @@ class Gui():
             yield
         finally:
             self.transform = old_transform
+            self.depth = old_depth
 
-    def Text(self, content, align='left', text_size=1, position=[0,0], scale=[1,1], color=[0,0,0,1], depth=0.99):
+    def Text(self, content, align='left', text_size=1, position=[0,0], scale=[1,1], color=[0,0,0,1]):
         font = self.font
         space = int(np.ceil((font["size"] >> 6)*0.20))
 
@@ -232,7 +241,7 @@ class Gui():
                 
                 self.shaders.text.uniform_functions["transform"](transform)
                 self.shaders.text.uniform_functions["color"](color)
-                self.shaders.text.uniform_functions["depth"](depth)
+                self.shaders.text.uniform_functions["depth"](self.depth)
                 glBindTexture(GL_TEXTURE_2D, c_texture)
                 self.draw()
 
@@ -253,7 +262,7 @@ class Gui():
         
         return False
     
-    def Image(self, data, position=[0,0], scale=[1,1], color=[1,1,1,1], alpha=1, depth=0.99, stretch=False):
+    def Image(self, data, position=[0,0], scale=[1,1], color=[1,1,1,1], alpha=1, stretch=False):
         texture = glGenTextures(1)
         single_channel = False
         
@@ -307,8 +316,9 @@ class Gui():
         shader.uniform_functions["transform"](transform)
         if single_channel:
             shader.uniform_functions["color"](color)
+            shader.uniform_functions["depth"](self.depth)
         else:
-            shader.uniform_functions["properties"]([depth, alpha])
+            shader.uniform_functions["properties"]([self.depth, alpha])
         
         self.draw()
         glDeleteTextures(1, texture)
@@ -329,7 +339,7 @@ class Gui():
 
     _drawer_state = {}
     @contextmanager
-    def Drawer(self, key, scale, side='right', offset_edge=0, offset_content=0, initially_open=False, lip_thickness=0.1, color=[0,0,0,0], alpha=1):
+    def Drawer(self, key, scale, side='right', offset_edge=0, offset_content=0, initially_open=False, lip_thickness=0.1, color=[0,0,0,0], alpha=1, depth=0):
         
         prop = 0 if side == 'right' or side == 'left' else 1
         sign = 1 if side == 'left' or side == 'top' else -1
@@ -347,7 +357,7 @@ class Gui():
             self._drawer_state[key] = [initial_position, initially_open, False]
         pos, isOpen, grabbed = self._drawer_state[key]
         
-        with self.Container(position=pos, scale=scale, color=color, alpha=alpha) as f:
+        with self.Container(position=pos, scale=scale, color=color, alpha=alpha, depth=depth):
             yield f
          
         start, current, end, consume = self.PointerInput()
