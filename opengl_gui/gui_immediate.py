@@ -339,7 +339,7 @@ class Gui():
 
     _drawer_state = {}
     @contextmanager
-    def Drawer(self, key, scale, side='right', offset_edge=0, offset_content=0, initially_open=False, lip_thickness=0.1, color=[0,0,0,0], alpha=1, depth=0):
+    def Drawer(self, key, scale, side='right', offset_edge=0, offset_content=0, initially_open=False, lip_thickness=0.1, force_state=None, color=[0,0,0,0], alpha=1, depth=0):
         
         prop = 0 if side == 'right' or side == 'left' else 1
         sign = 1 if side == 'left' or side == 'top' else -1
@@ -355,13 +355,16 @@ class Gui():
                 initial_position = [offset_content - scale[0], offset_edge]
 
             self._drawer_state[key] = [initial_position, initially_open, False]
+
+        if force_state is not None:
+            self._drawer_state[key][1] = force_state
+
         pos, isOpen, grabbed = self._drawer_state[key]
         
         with self.Container(position=pos, scale=scale, color=color, alpha=alpha, depth=depth):
-            yield f
-         
+            yield grabbed, isOpen
+
         start, current, end, consume = self.PointerInput()
-        
         
         if not grabbed and start is not None:
             if not offset_edge <= start[1-prop] <= offset_edge + scale[1-prop]:
@@ -369,10 +372,10 @@ class Gui():
 
             if side == 'left' or side == 'top':
                 if pos[prop] <= start[prop] <= pos[prop] + scale[prop] + lip_thickness:
-                    self._drawer_state[key][2] = True
+                    grabbed = self._drawer_state[key][2] = True
             else:
                 if pos[prop] - lip_thickness <= start[prop] <= pos[prop] + scale[prop]:
-                    self._drawer_state[key][2] = True
+                    grabbed = self._drawer_state[key][2] = True
 
         if grabbed:
             if end is not None or start is None:
@@ -381,6 +384,10 @@ class Gui():
                     self._drawer_state[key][1] = pos[prop] - (offset_content - scale[prop]) < (scale[prop] - offset_content)/2
                 else:
                     self._drawer_state[key][1] = 1 - offset_content - pos[prop] > (scale[prop] - offset_content)/2
+                consume()
+                return
+            
+            if force_state is not None:
                 return
             
             if isOpen:
