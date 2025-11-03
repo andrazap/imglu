@@ -40,6 +40,8 @@ class Gui():
         self.drag_start = None
         self.drag_end = None
 
+        self.mouse_x = self.mouse_y = -1
+
         self.mouse_in_window = 0
 
         self.frames = 0
@@ -244,16 +246,10 @@ class Gui():
             if text:
                 self.Text(text, align=align)
             
-            start, end, consume = self.PointerInput()
+            start, _, end, consume = self.PointerInput()
             if start is not None and end is not None and all([0 <= x <= 1 for x in [*start, *end]]):
                 consume()
                 return True
-            # if self.mouse_press_event is not None:
-            #     pressed, x, y = self.mouse_press_event
-            #     transformed = [x,y,1]@self.transform_inv.T
-
-            #     if pressed and np.all(transformed == np.clip(transformed, 0, 1)):
-            #         return True
         
         return False
     
@@ -319,12 +315,74 @@ class Gui():
 
     def PointerInput(self, position=[0,0], scale=[1,1]):
 
+        inv = np.linalg.inv(self.derive_transform(self.transform, position, scale))
+        tcurrent = ([self.mouse_x, self.mouse_y, 1] @ inv.T)[:2]
         tstart, tend = None, None
         
-        inv = np.linalg.inv(self.derive_transform(self.transform, position, scale))
         if self.drag_start:
             tstart = ([*self.drag_start, 1] @ inv.T)[:2]
             if self.drag_end:
                 tend = ([*self.drag_end, 1] @ inv.T)[:2]
 
-        return tstart, tend, self.consume_input
+        return tstart, tcurrent, tend, self.consume_input
+
+
+    _drawer_state = {}
+    @contextmanager
+    def Drawer(self, key, scale, side='right', offset_edge=0, offset_content=0, initially_open=False, lip_thickness=0.1, color=[0,0,0,0], alpha=1):
+        
+        prop = 0 if side == 'right' or side == 'left' else 1
+        sign = 1 if side == 'left' or side == 'top' else -1
+        
+        if key not in self._drawer_state:
+            if side == 'top':
+                initial_position = [offset_edge, offset_content - scale[1]]
+            elif side == 'right':
+                initial_position = [1 - offset_content, offset_edge]
+            elif side == 'bottom':
+                initial_position = [offset_edge, 1 - offset_content]
+            elif side == 'left':
+                initial_position = [offset_content - scale[0], offset_edge]
+
+            self._drawer_state[key] = [initial_position, initially_open, False]
+        pos, isOpen, grabbed = self._drawer_state[key]
+        
+        with self.Container(position=pos, scale=scale, color=color, alpha=alpha) as f:
+            yield f
+         
+        start, current, end, consume = self.PointerInput()
+        
+        
+        if not grabbed and start is not None:
+            if not offset_edge <= start[1-prop] <= offset_edge + scale[1-prop]:
+                return
+
+            if side == 'left' or side == 'top':
+                if pos[prop] <= start[prop] <= pos[prop] + scale[prop] + lip_thickness:
+                    self._drawer_state[key][2] = True
+            else:
+                if pos[prop] - lip_thickness <= start[prop] <= pos[prop] + scale[prop]:
+                    self._drawer_state[key][2] = True
+
+        if grabbed:
+            if end is not None or start is None:
+                self._drawer_state[key][2] = False
+                if side == 'left' or side == 'top':
+                    self._drawer_state[key][1] = pos[prop] - (offset_content - scale[prop]) < (scale[prop] - offset_content)/2
+                else:
+                    self._drawer_state[key][1] = 1 - offset_content - pos[prop] > (scale[prop] - offset_content)/2
+                return
+            
+            if isOpen:
+                reference = 0 if side == 'left' or side == 'top' else 1 - scale[prop]
+                pos[prop] = reference - sign * np.clip(0, -sign * (current[prop] - start[prop]), scale[prop] - offset_content)
+            else:
+                reference = offset_content - scale[prop] if side == 'left' or side == 'top' else 1 - offset_content
+                pos[prop] = reference + sign * np.clip(0, sign * (current[prop] - start[prop]), scale[prop] - offset_content)
+        else:
+            if isOpen:
+                reference = 0 if side == 'left' or side == 'top' else 1 - scale[prop]
+            else:
+                reference = offset_content - scale[prop] if side == 'left' or side == 'top' else 1 - offset_content
+            pos[prop] += (reference - pos[prop]) * 0.2
+                
