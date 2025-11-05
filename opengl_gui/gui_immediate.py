@@ -191,7 +191,7 @@ class Gui():
         try:    
             glUseProgram(self.shaders.default.shader_program)
             self.shaders.default.uniform_functions["transform"](self.transform)
-            self.shaders.default.uniform_functions["properties"]([depth, alpha])
+            self.shaders.default.uniform_functions["properties"]([self.depth, alpha])
             self.shaders.default.uniform_functions["color"](color)
             self.draw()
             yield
