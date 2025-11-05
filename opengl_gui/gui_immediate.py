@@ -213,7 +213,8 @@ class Gui():
         dims = np.array([self.width, self.height])
 
         # adjust text size with container scale so it becomes scale independent
-        text_size /= np.array([self.transform[0,0], self.transform[1,1]])
+        # note: we multiply the Text element's scale so not everything is in the context manager
+        text_size /= np.array([self.transform[0,0]*scale[0], self.transform[1,1]*scale[1]])
 
         for c in content:
             
