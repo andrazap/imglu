@@ -424,4 +424,37 @@ class Gui():
             else:
                 reference = offset_content - scale[prop] if side == 'left' or side == 'top' else 1 - offset_content
             pos[prop] += (reference - pos[prop]) * 0.2
-                
+    
+    def _grid_helper(self, parts):
+        total = 0
+        nones = 0
+        for part in parts:
+            if part is None:
+                nones += 1
+            else:
+                total += part
+        if total > 1:
+            raise ValueError('Grid parts cannot sum up to more than 1')
+        if nones > 0:
+            nones = (1 - total)/nones
+        return [nones if x is None else x for x in parts]
+
+    @contextmanager
+    def Grid(self, gap=[0,0], cols=[1], rows=[1], position=[0,0], scale=[1,1]):
+        
+        cols = self._grid_helper(cols)
+        cumcols = np.cumsum(cols) - cols
+        rows = self._grid_helper(rows)
+        cumrows = np.cumsum(rows) - rows
+        hgap, vgap = gap
+        
+        def layout(i,j):
+            i, ri = (i[0], slice(*i)) if type(i) == tuple else (i, slice(i,i+1))
+            j, rj = (j[0], slice(*j)) if type(j) == tuple else (j, slice(j,j+1))
+            
+            return {
+                'position': [cumcols[j] + hgap/2, cumrows[i] + vgap/2],
+                'scale': [sum(cols[rj]) - hgap, sum(rows[ri]) - vgap],
+            }
+        with self.Container(position=position, scale=scale):
+            yield layout
