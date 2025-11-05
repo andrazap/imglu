@@ -331,13 +331,13 @@ class Gui():
     def PointerInput(self, position=[0,0], scale=[1,1]):
 
         inv = np.linalg.inv(self.derive_transform(self.transform, position, scale))
-        tcurrent = ([self.mouse_x, self.mouse_y, 1] @ inv.T)[:2]
+        tcurrent = (inv @ [self.mouse_x, self.mouse_y, 1])[:2]
         tstart, tend = None, None
         
         if self.drag_start:
-            tstart = ([*self.drag_start, 1] @ inv.T)[:2]
+            tstart = (inv @ [*self.drag_start, 1])[:2]
             if self.drag_end:
-                tend = ([*self.drag_end, 1] @ inv.T)[:2]
+                tend = (inv @ [*self.drag_end, 1])[:2]
 
         return tstart, tcurrent, tend, self.consume_input
 
