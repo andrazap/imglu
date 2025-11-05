@@ -614,7 +614,7 @@ class Video():
         if self.video is None or \
            not self.play_toggle or \
            (not self.loop and self.frame_index == self.n_frames):
-            return None
+            return self.frame
 
         d = (time.time() - self.last_frame_time)*self.video_fps
         if d >= 1.0:
@@ -625,8 +625,9 @@ class Video():
 
             while 1.0 <= self.f:
 
-                flag, self.frame = self.video.read()
-                self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB) if flag else None
+                flag, frame = self.video.read()
+                if flag:
+                    self.frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 self.frame_index += 1
                 self.f = self.f - 1.0
 
@@ -641,9 +642,9 @@ class Video():
                 self.video.release()
                 self.video = cv2.VideoCapture(self.video_path)
 
-                return None
+                return self.frame
             else:
-                return None
+                return self.frame
 
     def reset_and_play(self):
 
