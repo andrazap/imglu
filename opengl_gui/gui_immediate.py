@@ -202,7 +202,7 @@ class Gui():
             self.transform = old_transform
             self.depth = old_depth
 
-    def Text(self, content, align='left', text_size=1, position=[0,0], scale=[1,1], color=[0,0,0,1]):
+    def Text(self, content, align='', text_size=1, color=[0,0,0,1], position=[0,0], scale=[1,1]):
         font = self.font
         space = int(np.ceil((font["size"] >> 6)*0.20))
 
@@ -210,7 +210,10 @@ class Gui():
         x = -min(init_offset,0)
 
         chars = []
-        dims = np.array([self.width, self.height]) * scale
+        dims = np.array([self.width, self.height])
+
+        # adjust text size with container scale so it becomes scale independent
+        text_size /= np.array([self.transform[0,0], self.transform[1,1]])
 
         for c in content:
             
@@ -228,20 +231,25 @@ class Gui():
             ))
             x += advance[0] >> 6
 
-        used_space = x*text_size / self.width
-        offset = [0, -(0.5 + font['line_height']*text_size/2/self.width)]
-        if align == 'center':
-            offset[0] = 0.5 - used_space/2
-        elif align == 'right':
+        used_space = x*text_size[0] / self.width
+        font_height_in_container_units = font['line_height']/dims[1]*-text_size[1]
+        # align center by default
+        offset = [0.5 - used_space/2, 0.5 + font_height_in_container_units/2]
+        # handle vertical alignment
+        if 'top' in align:
+            offset[1] = font_height_in_container_units
+        elif 'bottom' in align:
+            offset[1] = 1
+        # handle horizontal alignment
+        if 'right' in align:
             offset[0] = 1 - used_space
+        elif 'left' in align:
+            offset[0] = 0
 
-        scale = scale * np.array([1,-1])
         with self.Container(position=position, scale=scale):
-            without_scale = self.transform * np.array([[0,0,1],[0,0,1], [0,0,0]] + np.eye(3))
             glUseProgram(self.shaders.text.shader_program)
             for c_position, c_scale, c_texture in chars:
-                transform = self.derive_transform(without_scale, c_position + offset, c_scale)
-                
+                transform = self.derive_transform(self.transform, c_position + offset, c_scale)
                 self.shaders.text.uniform_functions["transform"](transform)
                 self.shaders.text.uniform_functions["color"](color)
                 self.shaders.text.uniform_functions["depth"](self.depth)
