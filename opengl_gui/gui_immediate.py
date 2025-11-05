@@ -181,6 +181,9 @@ class Gui():
                                         [0, scale[1], position[1]],
                                         [0,        0,           1]])
 
+    def query_container_size_px(self):
+        return self.transform[0,0]*self.width/2, abs(self.transform[1,1]*self.height/2)
+
     @contextmanager
     def Container(self, position=[0,0], scale=[1,1], color=[0,0,0,0], depth=0, alpha=1.0):
         old_transform = self.transform
@@ -262,7 +265,7 @@ class Gui():
         
         return False
     
-    def Image(self, data, position=[0,0], scale=[1,1], color=[1,1,1,1], alpha=1, stretch=False):
+    def Image(self, data, position=[0,0], scale=[1,1], color=[1,1,1,1], alpha=1, stretch=False, padding=0):
         texture = glGenTextures(1)
         single_channel = False
         
@@ -311,7 +314,9 @@ class Gui():
                     new_sx = scale[0] * aspect_image / aspect_container
                     ds = scale[0] - new_sx
                     transform = self.derive_transform(self.transform, [position[0]+ds/2, position[1]], [new_sx, scale[1]])
-                
+
+        if padding > 0:
+            transform = self.derive_transform(transform, [padding, padding], [1-2*padding, 1-2*padding])
             
         shader.uniform_functions["transform"](transform)
         if single_channel:
