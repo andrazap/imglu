@@ -256,15 +256,24 @@ class Gui():
                 glBindTexture(GL_TEXTURE_2D, c_texture)
                 self.draw()
 
-    def Button(self, text=None, icon=None, align='center', position=[0,0], scale=[1,1], color=[0,0,0,1]):
+    def Button(self, text=None, icon=None, align='center', icon_padding=0, text_size=1, position=[0,0], scale=[1,1], background=[0,0,0,0], color=[1,1,1,1]):
 
-        with self.Container(color=color, position=position, scale=scale):
+        with self.Container(color=background, position=position, scale=scale):
 
-            if icon:
-                self.Image(icon)
+            if icon is not None and text:
+                # calculate how wide the icon should be to be square
+                wpx, hpx = self.query_container_size_px()
+                
+                # so we know how much to offset text for
+                self.Image(icon, color=color, scale=[hpx/wpx,1], padding=icon_padding)
+                self.Text(text, align=align, color=color, position=[1.1*hpx/wpx,0], text_size=text_size)
+                
+                
+            elif icon is not None:
+                self.Image(icon, color=color, padding=icon_padding)
 
-            if text:
-                self.Text(text, align=align)
+            elif text:
+                self.Text(text, align=align, color=color, text_size=text_size)
             
             start, _, end, consume = self.PointerInput()
             if start is not None and end is not None and all([0 <= x <= 1 for x in [*start, *end]]):
