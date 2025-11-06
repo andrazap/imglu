@@ -9,6 +9,7 @@ class ViCoS():
 def setup(state):
     state.i = 0
     state.setDrawer = []
+    state.sliderVal = 0
     return Gui(
         fullscreen = False,
         width = 960,
@@ -18,7 +19,7 @@ def setup(state):
 def draw(gui, state):
     with gui.Container(position=[0,0], scale=[1,1], color=[0,1,0,1]):
         with gui.Grid(position=[0,0], scale=[0.5,0.5], rows=[0.3,None], cols=[None, None], gap=[0.1,0.1]) as g:
-            gui.Button(background=[1,0,0,1], **g(0,(0,2))) and print('1')
+            held, state.sliderVal = gui.Slider(state.sliderVal, **g(0,(0,2)))
             gui.Button(background=[1,1,0,1], **g(1,0)) and print('2')
         gui.Text('Wow gee', scale=[0.25,0.25])
         

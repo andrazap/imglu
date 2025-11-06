@@ -254,7 +254,10 @@ class CircleShader(DefaultShader):
 
             void main()
             {
-                float inside = fragPosition[0]*fragPosition[0] + fragPosition[1]*fragPosition[1];
+                float x = 2 * fragPosition[0] - 1;
+                float y = 2 * fragPosition[1] - 1;
+
+                float inside = x*x + y*y;
                 float alpha0 = 1.0f - smoothstep(1.0 - fwidth(inside), 1.0, inside);
                 //float alpha1 = smoothstep(0.8 - fwidth(inside), 0.8, inside);
 

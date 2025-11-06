@@ -38,6 +38,7 @@ class Gui():
         self.shader_pack = None
 
         self.drag_start = None
+        self.dragging = False
         self.drag_end = None
 
         self.mouse_x = self.mouse_y = -1
@@ -135,8 +136,10 @@ class Gui():
             if action == glfw.PRESS:
                 self.drag_start = (self.mouse_x, self.mouse_y)
                 self.drag_end = None
-            elif action == glfw.RELEASE and self.drag_start: # ignore release if we have no start
+                self.dragging = True
+            elif action == glfw.RELEASE:
                 self.drag_end = (self.mouse_x, self.mouse_y)
+                self.dragging = False
 
     def consume_input(self):
         self.drag_start = self.drag_end = None
@@ -160,6 +163,8 @@ class Gui():
     def poll_events(self):
 
         glfw.poll_events()
+        if self.dragging and self.drag_start is None:
+            self.drag_start = (self.mouse_x, self.mouse_y)
 
     def should_window_close(self):
         return glfw.window_should_close(self.window)
@@ -190,8 +195,8 @@ class Gui():
         self.transform = self.derive_transform(old_transform, position, scale)
         old_depth = self.depth
         self.depth = old_depth + (1 - old_depth) * depth
-        
-        try:    
+
+        try:
             glUseProgram(self.shaders.default.shader_program)
             self.shaders.default.uniform_functions["transform"](self.transform)
             self.shaders.default.uniform_functions["properties"]([self.depth, alpha])
@@ -459,3 +464,33 @@ class Gui():
             }
         with self.Container(position=position, scale=scale):
             yield layout
+
+    def Slider(self, value, lower=0, upper=1, thumb_size = 35, track_color=[0.5,0.5,0.5,1], thumb_color=[1,1,1,1], position=[0,0], scale=[1,1]):
+        wpx, hpx = self.query_container_size_px()
+        yscale = thumb_size / hpx
+        centered = position[1] + scale[1] / 2 - yscale / 2
+        with self.Container(position=[position[0], centered], scale=[scale[0],yscale]):
+            sx = thumb_size / wpx # size of thumb relative to current container
+            progress = (value - lower) / (upper - lower) # map value range to 0-1
+            px = sx + (progress - sx/2) * (1 - 2*sx) # map so 0-1 maps *only* along the track
+            
+            # Draw track (thumb sized margin in x, 20% high, centered)
+            glUseProgram(self.shaders.default.shader_program)
+            self.shaders.default.uniform_functions["transform"](self.derive_transform(self.transform, [sx,0.4], [1-2*sx, 0.2]))
+            self.shaders.default.uniform_functions["properties"]([self.depth, 1])
+            self.shaders.default.uniform_functions["color"](track_color)
+            self.draw()
+            # Draw thumb (fill whole y, position in x)
+            glUseProgram(self.shaders.circle.shader_program)
+            self.shaders.circle.uniform_functions["transform"](self.derive_transform(self.transform, [px, 0], [sx, 1]))
+            self.shaders.circle.uniform_functions["properties"]([self.depth, 1])
+            self.shaders.circle.uniform_functions["color"](thumb_color)
+            self.draw()
+            
+            # Handle dragging
+            start, current, end, consume = self.PointerInput()
+            if start is not None and end is None and all([0 <= x <= 1 for x in start]):
+                consume()
+                return self.dragging, lower + (upper - lower) * np.clip((current[0]-sx)/(1-2*sx), 0, 1)
+            
+            return self.dragging, value
