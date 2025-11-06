@@ -311,7 +311,7 @@ class Gui():
                 0, flag, GL_UNSIGNED_BYTE, data)
         glGenerateTextureMipmap(texture)
         
-        position = position + np.array([0,1])
+        position = position + scale * np.array([0,1])
         scale = scale * np.array([1,-1])
 
         glUseProgram(shader.shader_program)
