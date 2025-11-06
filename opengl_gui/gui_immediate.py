@@ -494,3 +494,32 @@ class Gui():
                 return self.dragging, lower + (upper - lower) * np.clip((current[0]-sx)/(1-2*sx), 0, 1)
             
             return self.dragging, value
+
+    def Toggle(self, state, background=[0,0,0,1], thumb=[1,1,1,1], active=[1,0,0,1], position=[0,0], scale=[1,1]):
+
+        with self.Container(position=position, scale=scale):
+            wpx, hpx = self.query_container_size_px()
+            colors = [active if state else background]*3 + [thumb]
+            shaders_ = [getattr(self.shaders, x) for x in ['circle', 'default', 'circle', 'circle']]
+            if wpx > hpx:
+                ratio = hpx/wpx
+                positions = [[0, 0], [ratio/2, 0], [1-ratio, 0], [1 - 0.9*ratio if state else 0.1*ratio, 0.1]]
+                scales = [[ratio, 1], [1-ratio, 1], [ratio, 1], [0.8*ratio, 0.8]]
+            else:
+                ratio = wpx/hpx
+                positions = [[0, 0], [0, ratio/2], [0, 1-ratio], [0.1, 1 - 0.9*ratio if state else 0.1*ratio]]
+                scales = [[1, ratio], [1, 1-ratio], [1, ratio], [0.8, 0.8*ratio]]
+
+            for shader, position, scale, color in zip(shaders_, positions, scales, colors):
+                glUseProgram(shader.shader_program)
+                shader.uniform_functions["transform"](self.derive_transform(self.transform, position, scale))
+                shader.uniform_functions["properties"]([self.depth, 1])
+                shader.uniform_functions["color"](color)
+                self.draw()
+            
+            start, _, end, consume = self.PointerInput()
+            if start is not None and end is not None and all([0 <= x <= 1 for x in [*start, *end]]):
+                consume()
+                return not state
+            
+            return state

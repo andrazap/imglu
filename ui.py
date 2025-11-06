@@ -10,6 +10,7 @@ def setup(state):
     state.i = 0
     state.setDrawer = []
     state.sliderVal = 0
+    state.toggle = False
     return Gui(
         fullscreen = False,
         width = 960,
@@ -21,6 +22,8 @@ def draw(gui, state):
         with gui.Grid(position=[0,0], scale=[0.5,0.5], rows=[0.3,None], cols=[None, None], gap=[0.1,0.1]) as g:
             held, state.sliderVal = gui.Slider(state.sliderVal, **g(0,(0,2)))
             gui.Button(background=[1,1,0,1], **g(1,0)) and print('2')
+            state.toggle = gui.Toggle(state.toggle, **g(1,1))
+            
         gui.Text('Wow gee', scale=[0.25,0.25])
         
         # we only need to set it once, otherwise it is locked in that state
