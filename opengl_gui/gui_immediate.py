@@ -439,7 +439,7 @@ class Gui():
                 nones += 1
             else:
                 total += part
-        if total > 1:
+        if round(total,4) > 1:
             raise ValueError('Grid parts cannot sum up to more than 1')
         if nones > 0:
             nones = (1 - total)/nones
