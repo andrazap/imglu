@@ -491,9 +491,9 @@ class Gui():
             start, current, end, consume = self.PointerInput()
             if start is not None and end is None and all([0 <= x <= 1 for x in start]):
                 consume()
-                return self.dragging, lower + (upper - lower) * np.clip((current[0]-sx)/(1-2*sx), 0, 1)
+                return True, lower + (upper - lower) * np.clip((current[0]-sx)/(1-2*sx), 0, 1)
             
-            return self.dragging, value
+            return False, value
 
     def Toggle(self, state, background=[0,0,0,1], thumb=[1,1,1,1], active=[1,0,0,1], position=[0,0], scale=[1,1]):
 
