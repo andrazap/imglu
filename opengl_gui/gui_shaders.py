@@ -124,7 +124,7 @@ class TextureShaderBGR(ShaderProgram):
         """
             #version 450 
             uniform mat3 transform;
-            uniform vec2 properties;
+            uniform vec3 properties;
 
             layout (location = 0) in vec2 position;
             layout (location = 1) in vec2 texCoordIn;
@@ -133,9 +133,10 @@ class TextureShaderBGR(ShaderProgram):
             void main()
             {
                 alpha = properties[1];
+                float zoom = properties[2];
                 vec3 tmp = transform*vec3(position,1.0);
                 gl_Position = vec4(tmp.x,tmp.y,properties[0],tmp.z);
-                texCoordOut = texCoordIn;
+                texCoordOut = (texCoordIn + (zoom - 1)/2)/zoom;
             }
         """
 
@@ -162,7 +163,7 @@ class TextureShaderBGR(ShaderProgram):
         self.properties_uniform_location = glGetUniformLocation(self.shader_program, "properties")
 
         self.uniform_functions["transform"] = lambda M: glUniformMatrix3fv(self.transform_uniform_location, 1, GL_TRUE, M)
-        self.uniform_functions["properties"] = lambda P: glUniform2fv(self.properties_uniform_location, 1, P)
+        self.uniform_functions["properties"] = lambda P: glUniform3fv(self.properties_uniform_location, 1, P)
   
 
         return self
@@ -177,6 +178,7 @@ class TextureShaderR(ShaderProgram):
             #version 450 
             uniform mat3 transform;
             uniform float depth;
+            uniform float zoom;
 
             layout (location = 0) in vec2 position;
             layout (location = 1) in vec2 texCoordIn;
@@ -185,7 +187,7 @@ class TextureShaderR(ShaderProgram):
             {
                 vec3 tmp = transform*vec3(position,1.0);
                 gl_Position = vec4(tmp.x,tmp.y,depth,tmp.z);
-                texCoordOut = texCoordIn;
+                texCoordOut = (texCoordIn + (zoom - 1)/2)/zoom;
             }
         """
 
@@ -211,10 +213,12 @@ class TextureShaderR(ShaderProgram):
         self.transform_uniform_location = glGetUniformLocation(self.shader_program, "transform")
         self.color_uniform_location = glGetUniformLocation(self.shader_program, "color")
         self.depth_uniform_location  = glGetUniformLocation(self.shader_program, "depth")
+        self.zoom_uniform_location = glGetUniformLocation(self.shader_program, "zoom")
 
         self.uniform_functions["transform"] = lambda M: glUniformMatrix3fv(self.transform_uniform_location, 1, GL_TRUE, M)
         self.uniform_functions["color"]    = lambda C: glUniform4fv(self.color_uniform_location, 1, C)
         self.uniform_functions["depth"]     = lambda D: glUniform1f(self.depth_uniform_location, D)
+        self.uniform_functions["zoom"] = lambda Z: glUniform1f(self.zoom_uniform_location, Z)
 
         return self
 

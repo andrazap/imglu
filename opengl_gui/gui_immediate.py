@@ -189,6 +189,40 @@ class Gui():
     def query_container_size_px(self):
         return self.transform[0,0]*self.width/2, abs(self.transform[1,1]*self.height/2)
 
+    def create_texture(self, data):
+        texture = glGenTextures(1)
+        single_channel = False
+        
+        if len(data.shape) == 2:
+            single_channel = True
+            data = data[:,:,np.newaxis]
+        elif len(data.shape) != 3:
+            raise ValueError('Unsupported image dimensions')
+
+        glBindTexture(GL_TEXTURE_2D, texture)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+        if single_channel:
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+            flag = GL_RED
+            shader = self.shaders.texture_r
+        else:
+            flag = GL_RGB
+            shader = self.shaders.texture_bgr
+        glBindTexture(GL_TEXTURE_2D, texture)
+        glTexImage2D(GL_TEXTURE_2D, 0, flag, data.shape[1], data.shape[0],
+                0, flag, GL_UNSIGNED_BYTE, data)
+        glGenerateTextureMipmap(texture)
+        return shader, texture, data.shape
+    
+    def update_texture(self, texture, data):
+        glBindTexture(GL_TEXTURE_2D, texture[1])
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, data.shape[1], data.shape[0], GL_RGB, GL_UNSIGNED_BYTE, data)
+        glGenerateTextureMipmap(texture[1])
+
     @contextmanager
     def Container(self, position=[0,0], scale=[1,1], color=[0,0,0,0], depth=0, alpha=1.0):
         old_transform = self.transform
@@ -288,34 +322,14 @@ class Gui():
         
         return False
     
-    def Image(self, data, position=[0,0], scale=[1,1], color=[1,1,1,1], alpha=1, stretch=False, padding=0):
-        texture = glGenTextures(1)
-        single_channel = False
-        
-        if len(data.shape) == 2:
-            single_channel = True
-            data = data[:,:,np.newaxis]
-        elif len(data.shape) != 3:
-            raise ValueError('Unsupported image dimensions')
-
-        glBindTexture(GL_TEXTURE_2D, texture)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-
-        if single_channel:
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-            flag = GL_RED
-            shader = self.shaders.texture_r
+    def Image(self, data, position=[0,0], scale=[1,1], color=[1,1,1,1], alpha=1, stretch=False, padding=0, zoom=1):
+        if type(data) == tuple:
+            shader, texture, shape = data
+            cleanup = False
         else:
-            flag = GL_RGB
-            shader = self.shaders.texture_bgr
-        glBindTexture(GL_TEXTURE_2D, texture)
-        glTexImage2D(GL_TEXTURE_2D, 0, flag, data.shape[1], data.shape[0],
-                0, flag, GL_UNSIGNED_BYTE, data)
-        glGenerateTextureMipmap(texture)
-        
+            shader, texture, shape = self.create_texture(data)
+            cleanup = True
+
         position = position + scale * np.array([0,1])
         scale = scale * np.array([1,-1])
 
@@ -324,7 +338,7 @@ class Gui():
         
         if not stretch:
             sx,sy = transform[0,0],transform[1,1]
-            h,w,_ = data.shape
+            h,w,_ = shape
             aspect_container = (sx*self.width)/(sy*self.height)
             aspect_image = w/h
             diff = aspect_image - aspect_container
@@ -340,16 +354,19 @@ class Gui():
 
         if padding > 0:
             transform = self.derive_transform(transform, [padding, padding], [1-2*padding, 1-2*padding])
-            
-        shader.uniform_functions["transform"](transform)
-        if single_channel:
-            shader.uniform_functions["color"](color)
-            shader.uniform_functions["depth"](self.depth)
+
+        glBindTexture(GL_TEXTURE_2D, texture)
+        shader.uniform_functions['transform'](transform)
+        if 'depth' in shader.uniform_functions:
+            shader.uniform_functions['color'](color)
+            shader.uniform_functions['depth'](self.depth)
+            shader.uniform_functions['zoom'](zoom)
         else:
-            shader.uniform_functions["properties"]([self.depth, alpha])
+            shader.uniform_functions['properties']([self.depth, alpha, zoom])
         
         self.draw()
-        glDeleteTextures(1, texture)
+        if cleanup:
+            glDeleteTextures(1, texture)
 
     def PointerInput(self, position=[0,0], scale=[1,1]):
 
