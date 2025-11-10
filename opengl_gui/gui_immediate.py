@@ -32,7 +32,7 @@ class Gui():
         self.aspect_ratio = width/height
 
         if not glfw.init():
-            print("Error initializing glfw...")
+            print('Error initializing glfw...')
             exit()
 
         self.shader_pack = None
@@ -69,7 +69,7 @@ class Gui():
         self.width  = width  if width  <= 3840 else 3840
         self.height = height if height <= 2160 else 2160
 
-        self.window = glfw.create_window(width, height, "VICOS Demo", glfw.get_primary_monitor() if self.fullscreen else None, None)
+        self.window = glfw.create_window(width, height, 'VICOS Demo', glfw.get_primary_monitor() if self.fullscreen else None, None)
         self.window_aspect_ratio = self.width/self.height
 
         glfw.make_context_current(self.window)
@@ -232,9 +232,9 @@ class Gui():
 
         try:
             glUseProgram(self.shaders.default.shader_program)
-            self.shaders.default.uniform_functions["transform"](self.transform)
-            self.shaders.default.uniform_functions["properties"]([self.depth, alpha])
-            self.shaders.default.uniform_functions["color"](color)
+            self.shaders.default.uniform_functions['transform'](self.transform)
+            self.shaders.default.uniform_functions['properties']([self.depth, alpha])
+            self.shaders.default.uniform_functions['color'](color)
             self.draw()
             yield
         finally:
@@ -243,9 +243,9 @@ class Gui():
 
     def Text(self, content, align='', text_size=1, color=[0,0,0,1], position=[0,0], scale=[1,1]):
         font = self.font
-        space = int(np.ceil((font["size"] >> 6)*0.20))
+        space = int(np.ceil((font['size'] >> 6)*0.20))
 
-        init_offset = font[content[0]]["bearing"][0]
+        init_offset = font[content[0]]['bearing'][0]
         x = -min(init_offset,0)
 
         chars = []
@@ -262,7 +262,7 @@ class Gui():
                 continue
 
             advance, bearing, size, texture = [font[c][prop] for prop in \
-                ["advance", "bearing", "size", "texture"]]
+                ['advance', 'bearing', 'size', 'texture']]
             
             chars.append((
                 [x + bearing[0], bearing[1] - size[1]] / dims * text_size,
@@ -290,9 +290,9 @@ class Gui():
             glUseProgram(self.shaders.text.shader_program)
             for c_position, c_scale, c_texture in chars:
                 transform = self.derive_transform(self.transform, c_position + offset, c_scale)
-                self.shaders.text.uniform_functions["transform"](transform)
-                self.shaders.text.uniform_functions["color"](color)
-                self.shaders.text.uniform_functions["depth"](self.depth)
+                self.shaders.text.uniform_functions['transform'](transform)
+                self.shaders.text.uniform_functions['color'](color)
+                self.shaders.text.uniform_functions['depth'](self.depth)
                 glBindTexture(GL_TEXTURE_2D, c_texture)
                 self.draw()
 
@@ -493,15 +493,15 @@ class Gui():
             
             # Draw track (thumb sized margin in x, 20% high, centered)
             glUseProgram(self.shaders.default.shader_program)
-            self.shaders.default.uniform_functions["transform"](self.derive_transform(self.transform, [sx,0.4], [1-2*sx, 0.2]))
-            self.shaders.default.uniform_functions["properties"]([self.depth, 1])
-            self.shaders.default.uniform_functions["color"](track_color)
+            self.shaders.default.uniform_functions['transform'](self.derive_transform(self.transform, [sx,0.4], [1-2*sx, 0.2]))
+            self.shaders.default.uniform_functions['properties']([self.depth, 1])
+            self.shaders.default.uniform_functions['color'](track_color)
             self.draw()
             # Draw thumb (fill whole y, position in x)
             glUseProgram(self.shaders.circle.shader_program)
-            self.shaders.circle.uniform_functions["transform"](self.derive_transform(self.transform, [px, 0], [sx, 1]))
-            self.shaders.circle.uniform_functions["properties"]([self.depth, 1])
-            self.shaders.circle.uniform_functions["color"](thumb_color)
+            self.shaders.circle.uniform_functions['transform'](self.derive_transform(self.transform, [px, 0], [sx, 1]))
+            self.shaders.circle.uniform_functions['properties']([self.depth, 1])
+            self.shaders.circle.uniform_functions['color'](thumb_color)
             self.draw()
             
             # Handle dragging
@@ -529,9 +529,9 @@ class Gui():
 
             for shader, position, scale, color in zip(shaders_, positions, scales, colors):
                 glUseProgram(shader.shader_program)
-                shader.uniform_functions["transform"](self.derive_transform(self.transform, position, scale))
-                shader.uniform_functions["properties"]([self.depth, 1])
-                shader.uniform_functions["color"](color)
+                shader.uniform_functions['transform'](self.derive_transform(self.transform, position, scale))
+                shader.uniform_functions['properties']([self.depth, 1])
+                shader.uniform_functions['color'](color)
                 self.draw()
             
             start, _, end, consume = self.PointerInput()
