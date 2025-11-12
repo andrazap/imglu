@@ -95,6 +95,7 @@ class Gui():
 
         ####
         self.shaders = Shaders()
+        self.current_program = None
 
         vertices = np.array(
             [1.0,   0, 1.0, 1.0,
@@ -156,6 +157,11 @@ class Gui():
 
         if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
             glfw.set_window_should_close(window, glfw.TRUE)
+
+    def use_program(self, program):
+        if self.current_program != program:
+            self.current_program = program
+            glUseProgram(program)
 
     def draw(self):
         glDrawArrays(GL_TRIANGLES, 0, self.number_of_vertices)
@@ -231,7 +237,7 @@ class Gui():
         self.depth = old_depth + (1 - old_depth) * depth
 
         try:
-            glUseProgram(self.shaders.default.shader_program)
+            self.use_program(self.shaders.default.shader_program)
             self.shaders.default.uniform_functions['transform'](self.transform)
             self.shaders.default.uniform_functions['properties']([self.depth, alpha])
             self.shaders.default.uniform_functions['color'](color)
@@ -333,7 +339,7 @@ class Gui():
         position = position + scale * np.array([0,1])
         scale = scale * np.array([1,-1])
 
-        glUseProgram(shader.shader_program)
+        self.use_program(shader.shader_program)
         transform = self.derive_transform(self.transform, position, scale)
         
         if not stretch:
@@ -492,13 +498,13 @@ class Gui():
             px = sx + (progress - sx/2) * (1 - 2*sx) # map so 0-1 maps *only* along the track
             
             # Draw track (thumb sized margin in x, 20% high, centered)
-            glUseProgram(self.shaders.default.shader_program)
+            self.use_program(self.shaders.default.shader_program)
             self.shaders.default.uniform_functions['transform'](self.derive_transform(self.transform, [sx,0.4], [1-2*sx, 0.2]))
             self.shaders.default.uniform_functions['properties']([self.depth, 1])
             self.shaders.default.uniform_functions['color'](track_color)
             self.draw()
             # Draw thumb (fill whole y, position in x)
-            glUseProgram(self.shaders.circle.shader_program)
+            self.use_program(self.shaders.circle.shader_program)
             self.shaders.circle.uniform_functions['transform'](self.derive_transform(self.transform, [px, 0], [sx, 1]))
             self.shaders.circle.uniform_functions['properties']([self.depth, 1])
             self.shaders.circle.uniform_functions['color'](thumb_color)
@@ -517,18 +523,18 @@ class Gui():
         with self.Container(position=position, scale=scale):
             wpx, hpx = self.query_container_size_px()
             colors = [active if state else background]*3 + [thumb]
-            shaders_ = [getattr(self.shaders, x) for x in ['circle', 'default', 'circle', 'circle']]
+            shaders_ = [getattr(self.shaders, x) for x in ['default', 'circle', 'circle', 'circle']]
             if wpx > hpx:
                 ratio = hpx/wpx
-                positions = [[0, 0], [ratio/2, 0], [1-ratio, 0], [1 - 0.9*ratio if state else 0.1*ratio, 0.1]]
-                scales = [[ratio, 1], [1-ratio, 1], [ratio, 1], [0.8*ratio, 0.8]]
+                positions = [[ratio/2, 0], [0, 0], [1-ratio, 0], [1 - 0.9*ratio if state else 0.1*ratio, 0.1]]
+                scales = [[1-ratio, 1], [ratio, 1], [ratio, 1], [0.8*ratio, 0.8]]
             else:
                 ratio = wpx/hpx
-                positions = [[0, 0], [0, ratio/2], [0, 1-ratio], [0.1, 1 - 0.9*ratio if state else 0.1*ratio]]
-                scales = [[1, ratio], [1, 1-ratio], [1, ratio], [0.8, 0.8*ratio]]
+                positions = [[0, ratio/2], [0, 0], [0, 1-ratio], [0.1, 1 - 0.9*ratio if state else 0.1*ratio]]
+                scales = [[1, 1-ratio], [1, ratio], [1, ratio], [0.8, 0.8*ratio]]
 
             for shader, position, scale, color in zip(shaders_, positions, scales, colors):
-                glUseProgram(shader.shader_program)
+                self.use_program(shader.shader_program)
                 shader.uniform_functions['transform'](self.derive_transform(self.transform, position, scale))
                 shader.uniform_functions['properties']([self.depth, 1])
                 shader.uniform_functions['color'](color)
