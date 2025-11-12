@@ -477,13 +477,14 @@ class Gui():
         cumrows = np.cumsum(rows) - rows
         hgap, vgap = gap
         
-        def layout(i,j):
+        def layout(i,j, nogap=False):
             i, ri = (i[0], slice(*i)) if type(i) == tuple else (i, slice(i,i+1))
             j, rj = (j[0], slice(*j)) if type(j) == tuple else (j, slice(j,j+1))
+            g = 0 if nogap else 1
             
             return {
-                'position': [cumcols[j] + hgap/2, cumrows[i] + vgap/2],
-                'scale': [sum(cols[rj]) - hgap, sum(rows[ri]) - vgap],
+                'position': [cumcols[j] + g*hgap/2, cumrows[i] + g*vgap/2],
+                'scale': [sum(cols[rj]) - g*hgap, sum(rows[ri]) - g*vgap],
             }
         with self.Container(position=position, scale=scale):
             yield layout
