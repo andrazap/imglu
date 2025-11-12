@@ -469,7 +469,7 @@ class Gui():
         return [nones if x is None else x for x in parts]
 
     @contextmanager
-    def Grid(self, gap=[0,0], cols=[1], rows=[1], position=[0,0], scale=[1,1]):
+    def Grid(self, gap=[0,0], cols=[1], rows=[1], position=[0,0], scale=[1,1], depth=0):
         
         cols = self._grid_helper(cols)
         cumcols = np.cumsum(cols) - cols
@@ -486,7 +486,7 @@ class Gui():
                 'position': [cumcols[j] + g*hgap/2, cumrows[i] + g*vgap/2],
                 'scale': [sum(cols[rj]) - g*hgap, sum(rows[ri]) - g*vgap],
             }
-        with self.Container(position=position, scale=scale):
+        with self.Container(position=position, scale=scale, depth=depth):
             yield layout
 
     def Slider(self, value, lower=0, upper=1, thumb_size = 35, track_color=[0.5,0.5,0.5,1], thumb_color=[1,1,1,1], position=[0,0], scale=[1,1]):
