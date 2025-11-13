@@ -37,9 +37,11 @@ class Gui():
 
         self.shader_pack = None
 
-        self.drag_start = None
-        self.dragging = False
-        self.drag_end = None
+        self.inputs = {
+            'early': { '_start': None, 'start': None, 'last_click': None, 'dragging': False, 'end': None },
+            'normal': { '_start': None, 'start': None, 'last_click': None, 'dragging': False, 'end': None },
+        }
+        self.drag_lock = None
 
         self.mouse_x = self.mouse_y = -1
 
@@ -47,8 +49,7 @@ class Gui():
 
         self.frames = 0
 
-        self.time_fps = time.time()
-        self.time_from_start = time.time()
+        self.time = time.time()
 
         self.depth = 0
         self.transform       = np.array([[2,0,-1],
@@ -135,15 +136,13 @@ class Gui():
 
         if button == glfw.MOUSE_BUTTON_LEFT:
             if action == glfw.PRESS:
-                self.drag_start = (self.mouse_x, self.mouse_y)
-                self.drag_end = None
-                self.dragging = True
+                self.inputs['early'] = { '_start': None, 'start': (self.mouse_x, self.mouse_y), 'last_click': self.time, 'dragging': True, 'end': None }
             elif action == glfw.RELEASE:
-                self.drag_end = (self.mouse_x, self.mouse_y)
-                self.dragging = False
+                self.inputs['early'] = { **self.inputs['early'], 'dragging': False, 'end': (self.mouse_x, self.mouse_y) }
 
     def consume_input(self):
-        self.drag_start = self.drag_end = None
+        for phase, input in self.inputs.items():
+            self.inputs[phase] = { **input, '_start': input['start'] or input['_start'], 'start': None, 'end': None }
 
     def resize_event_callback(self, window, width, height) -> None:
 
@@ -168,9 +167,13 @@ class Gui():
 
     def poll_events(self):
 
+        # The lock is is a bit of a hack to make sure 
+        if self.inputs['normal']['dragging'] and not self.inputs['early']['dragging']:
+            self.drag_lock = None
+        i = self.inputs['normal'] = self.inputs['early']
+        self.inputs['early'] = { **self.inputs['early'], '_start': None, 'start': i['dragging'] and i['_start'] or i['start'] }
+        self.time = time.time()
         glfw.poll_events()
-        if self.dragging and self.drag_start is None:
-            self.drag_start = (self.mouse_x, self.mouse_y)
 
     def should_window_close(self):
         return glfw.window_should_close(self.window)
@@ -321,10 +324,10 @@ class Gui():
             elif text:
                 self.Text(text, align=align, color=color, text_size=text_size)
             
-            start, _, end, consume = self.PointerInput()
-            if start is not None and end is not None and all([0 <= x <= 1 for x in [*start, *end]]):
+            start, current, end, consume = self.PointerInput(phase='early', time_limit=0.1)
+            if start is not None and all([0 <= x <= 1 for x in [*start, *current]]):
                 consume()
-                return True
+                return end is not None
         
         return False
     
@@ -374,16 +377,18 @@ class Gui():
         if cleanup:
             glDeleteTextures(1, texture)
 
-    def PointerInput(self, position=[0,0], scale=[1,1]):
+    def PointerInput(self, position=[0,0], scale=[1,1], phase='normal', time_limit=None):
+
+        start, last_click, end = [self.inputs[phase][k] for k in ('start', 'last_click', 'end')]
 
         inv = np.linalg.inv(self.derive_transform(self.transform, position, scale))
         tcurrent = (inv @ [self.mouse_x, self.mouse_y, 1])[:2]
         tstart, tend = None, None
         
-        if self.drag_start:
-            tstart = (inv @ [*self.drag_start, 1])[:2]
-            if self.drag_end:
-                tend = (inv @ [*self.drag_end, 1])[:2]
+        if start and (time_limit is None or self.time - last_click < time_limit):
+            tstart = (inv @ [*start, 1])[:2]
+            if end:
+                tend = (inv @ [*end, 1])[:2]
 
         return tstart, tcurrent, tend, self.consume_input
 
@@ -395,6 +400,7 @@ class Gui():
         prop = 0 if side == 'right' or side == 'left' else 1
         sign = 1 if side == 'left' or side == 'top' else -1
         
+        # Initialize drawer state if not present
         if key not in self._drawer_state:
             if side == 'top':
                 initial_position = [offset_edge, offset_content - scale[1]]
@@ -424,9 +430,11 @@ class Gui():
             if side == 'left' or side == 'top':
                 if pos[prop] <= start[prop] <= pos[prop] + scale[prop] + lip_thickness:
                     grabbed = self._drawer_state[key][2] = True
+                    self.drag_lock = 'drawer'
             else:
                 if pos[prop] - lip_thickness <= start[prop] <= pos[prop] + scale[prop]:
                     grabbed = self._drawer_state[key][2] = True
+                    self.drag_lock = 'drawer'
 
         if grabbed:
             if end is not None or start is None:
@@ -512,8 +520,8 @@ class Gui():
             self.draw()
             
             # Handle dragging
-            start, current, end, consume = self.PointerInput()
-            if start is not None and end is None and all([0 <= x <= 1 for x in start]):
+            start, current, end, consume = self.PointerInput(phase='early')
+            if start is not None and end is None and all([0 <= x <= 1 for x in start]) and self.drag_lock is None:
                 consume()
                 return True, lower + (upper - lower) * np.clip((current[0]-sx)/(1-2*sx), 0, 1)
             
@@ -541,7 +549,7 @@ class Gui():
                 shader.uniform_functions['color'](color)
                 self.draw()
             
-            start, _, end, consume = self.PointerInput()
+            start, _, end, consume = self.PointerInput(phase='early')
             if start is not None and end is not None and all([0 <= x <= 1 for x in [*start, *end]]):
                 consume()
                 return not state
