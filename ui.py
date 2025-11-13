@@ -8,7 +8,7 @@ class ViCoS():
 
 def setup(state):
     state.i = 0
-    state.setDrawer = []
+    state.drawer = 0
     state.sliderVal = 0
     state.toggle = False
     return Gui(
@@ -17,7 +17,7 @@ def setup(state):
         height = 690,
         font="./Metropolis-SemiBold.otf")
 
-def draw(gui, state):
+def draw(gui:Gui, state):
     with gui.Container(position=[0,0], scale=[1,1], color=[0,1,0,1]):
         with gui.Grid(position=[0,0], scale=[0.5,0.5], rows=[0.3,None], cols=[None, None], gap=[0.1,0.1]) as g:
             held, state.sliderVal = gui.Slider(state.sliderVal, **g(0,(0,2)))
@@ -25,13 +25,11 @@ def draw(gui, state):
             state.toggle = gui.Toggle(state.toggle, **g(1,1))
             
         gui.Text('Wow gee', scale=[0.25,0.25])
-        
         # we only need to set it once, otherwise it is locked in that state
-        force_drawer = None if len(state.setDrawer) == 0 else state.setDrawer.pop()
-        with gui.Drawer('icon', scale=[0.5,0.5], side='top', offset_edge=0.5, offset_content=0.1, color=[1,0.5,0,1], depth=1, force_state=force_drawer) as (grabbed, isOpen):
+        with gui.Drawer(state.drawer, scale=[0.5,0.5], side='top', lip_thickness=0.2, color=[1,0.5,0,1], depth=1) as (state.drawer, grabbed):
             gui.Image(icon)
-        if gui.Button('Close drawer' if isOpen else 'Open drawer', position=[0, 0.75], scale=[0.25,0.25], color=[0,0,1,1]):
-            state.setDrawer.append(not isOpen)
+        if gui.Button('Close drawer' if state.drawer > 0.5 else 'Open drawer', position=[0, 0.75], scale=[0.25,0.25], color=[0,0,1,1]):
+            state.drawer = 1 - state.drawer
         
         with gui.Container(position=[0.25,0.5], scale=[0.5,0.5], color=[0.5,0.5,0.5,1]):
             gui.Text('Wow gee wilicker', align='right')
