@@ -6,6 +6,7 @@ from contextlib import contextmanager
 import glfw
 import numpy as np
 import time
+from functools import cache
 
 from opengl_gui.gui_shaders import *
 from opengl_gui.gui_helper import load_font
@@ -114,6 +115,8 @@ class Gui():
 
         glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_array)
 
+        self.text_buffer = glGenBuffers(1)
+        self.index_buffer = glGenBuffers(1)
         self.VAO = glGenVertexArrays(1)
         glBindVertexArray(self.VAO)
 
@@ -250,7 +253,8 @@ class Gui():
             self.transform = old_transform
             self.depth = old_depth
 
-    def Text(self, content, align='', text_size=1, color=[0,0,0,1], position=[0,0], scale=[1,1]):
+    @cache
+    def calculate_positions(self, content, align, scale, text_size):
         font = self.font
         space = int(np.ceil((font['size'] >> 6)*0.20))
 
@@ -270,13 +274,13 @@ class Gui():
                 x += space
                 continue
 
-            advance, bearing, size, texture = [font[c][prop] for prop in \
-                ['advance', 'bearing', 'size', 'texture']]
+            advance, bearing, size, atlas_info = [font[c][prop] for prop in \
+                ['advance', 'bearing', 'size', 'atlas_info']]
             
             chars.append((
                 [x + bearing[0], bearing[1] - size[1]] / dims * text_size,
                 size / dims * text_size,
-                texture,
+                atlas_info,
             ))
             x += advance[0] >> 6
 
@@ -294,16 +298,83 @@ class Gui():
             offset[0] = 1 - used_space
         elif 'left' in align:
             offset[0] = 0
+        
+        return chars, offset
+
+    def Text(self, content, align='', text_size=1, color=[0,0,0,1], position=[0,0], scale=[1,1]):
+        
+        chars, offset = self.calculate_positions(content, align, tuple(scale), text_size)
 
         with self.Container(position=position, scale=scale):
-            glUseProgram(self.shaders.text.shader_program)
-            for c_position, c_scale, c_texture in chars:
-                transform = self.derive_transform(self.transform, c_position + offset, c_scale)
-                self.shaders.text.uniform_functions['transform'](transform)
-                self.shaders.text.uniform_functions['color'](color)
-                self.shaders.text.uniform_functions['depth'](self.depth)
-                glBindTexture(GL_TEXTURE_2D, c_texture)
-                self.draw()
+            self.use_program(self.shaders.text.shader_program)
+            glBindTexture(GL_TEXTURE_2D, self.font['atlas'])
+
+            vertices = []
+            indices = []
+            for i, (c_position, c_scale, atlas_info) in enumerate(chars):
+                x, y = c_position + offset
+                w, h = c_scale
+                
+                uv_offset, uv_size = atlas_info
+                u0, v0 = uv_offset
+                u1 = u0 + uv_size[0]
+                v1 = v0 + uv_size[1]
+                
+                vertices.extend([
+                    x,     y + h,     u0, v0,  # bottom-left
+                    x + w, y + h,     u1, v0,  # bottom-right
+                    x + w, y, u1, v1,  # top-right
+                    x,     y, u0, v1,  # top-left
+                ])
+                
+                base_index = i * 4
+                indices.extend([
+                    base_index, base_index + 1, base_index + 2,  # First triangle
+                    base_index, base_index + 2, base_index + 3,   # Second triangle
+                ])
+
+            vertices = np.array(vertices, dtype=np.float32)
+            # glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
+            # Vertex buffer
+            vbo = self.text_buffer
+            glBindBuffer(GL_ARRAY_BUFFER, vbo)
+            glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices, GL_STATIC_DRAW)
+            #glBindBuffer(GL_ARRAY_BUFFER, vbo)
+
+            # Index buffer
+            ibo = self.index_buffer
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo)
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, np.array(indices, dtype=np.uint32), GL_STATIC_DRAW)
+
+            self.use_program(self.shaders.text.shader_program)
+            glBindTexture(GL_TEXTURE_2D, self.font['atlas'])
+
+            # Shared uniforms
+            self.shaders.text.uniform_functions['transform'](self.transform)
+            self.shaders.text.uniform_functions['color'](color)
+            self.shaders.text.uniform_functions['depth'](self.depth)
+
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 16, ctypes.c_void_p(0))
+            glEnableVertexAttribArray(0)
+
+            # TexCoord attribute
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 16, ctypes.c_void_p(8))
+            glEnableVertexAttribArray(1)
+
+            # Draw all text in one go
+            glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, ctypes.c_void_p(0))
+            #glDeleteBuffers(1, vbo)
+            
+            # revert
+            glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_array)
+            glBindVertexArray(self.VAO)
+
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 16, None)
+            glEnableVertexAttribArray(0)
+
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 16, ctypes.c_void_p(8))
+            glEnableVertexAttribArray(1)
+
 
     def Button(self, text=None, icon=None, align='center', icon_padding=0, text_size=1, position=[0,0], scale=[1,1], background=[0,0,0,0], color=[1,1,1,1]):
 

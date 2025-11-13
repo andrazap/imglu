@@ -33,43 +33,81 @@ def HSV_to_RGB(H, S, V):
 
     return [L[0] + m, L[1] + m, L[2] + m, 1.0]
 
-def load_font(path = "/home/demoos/Downloads/Metropolis-SemiBold.otf", size = 64*50, dpi = 72):
+def load_font(path, size = 64*50, dpi = 72):
     font = {}
     face = freetype.Face(path)
     characters = list(string.ascii_lowercase) + \
                 list(string.ascii_uppercase) + \
                 list(string.digits) + \
-                ['Č', 'Š', 'Ž', 'č', 'š', 'ž', ':', '-', '#', '.', ',', '!', '?', 0xf008]
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+                ['Č', 'Š', 'Ž', 'č', 'š', 'ž', ':', '-', '#', '.', ',', '!', '?']
 
     face.set_char_size(width=0, height=size, hres=0, vres=dpi)
+    
+    glyphs = []
     for c in characters:
         face.load_char(c)
 
         bitmap = face.glyph.bitmap
         buffer = np.array(bitmap.buffer, dtype = np.int32).reshape(bitmap.rows, bitmap.width)
 
-        texture = glGenTextures(1)
-        glBindTexture(GL_TEXTURE_2D, texture)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, buffer.shape[1], buffer.shape[0],
-                    0, GL_RED, GL_UNSIGNED_BYTE, buffer)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glyphs.append({
+            'char' : c, 
+            'buffer' : buffer, 
+            'size' : (face.glyph.bitmap.width, face.glyph.bitmap.rows),
+            'bearing' : (face.glyph.bitmap_left, face.glyph.bitmap_top),
+            'advance' : (face.glyph.advance.x, face.glyph.advance.y),
+        })
+    
+    # sort characters by height
+    characters = sorted(glyphs, key=lambda c: c['size'][::-1], reverse=True)
+    atlas_size = (384, 384)
+    atlas = np.zeros(atlas_size)
+    occupancy = np.zeros_like(atlas)
+    d = 1
+    x = y = 0
+    font = {}
+    gap = 2
 
-        font[c] = {"char" : c, 
-                   "buffer" : buffer, 
-                   "size" : (face.glyph.bitmap.width, face.glyph.bitmap.rows),
-                   "bearing" : (face.glyph.bitmap_left, face.glyph.bitmap_top),
-                   "advance" : (face.glyph.advance.x, face.glyph.advance.y),
-                   "texture" : texture}
-
+    while characters:
+        i = 0
+        while i < len(characters):
+            c = characters[i]
+            sx, sy = c['size']
+            if 0 <= x + d * sx < atlas_size[1] and not np.any(occupancy[y:y+sy,x:x+sx] if d == 1 else occupancy[y-sy:y,x-sx:x]):
+                ox, oy = c['offset'] = (x,y) if d == 1 else (x - sx,y - sy)
+                bitmap = c['buffer']
+                occupancy[oy:oy + bitmap.shape[0],ox:ox+bitmap.shape[1]] = 1
+                atlas[oy:oy + bitmap.shape[0],ox:ox+bitmap.shape[1]] = bitmap
+                c['atlas_info'] = (ox/atlas_size[1], oy/atlas_size[0]), (bitmap.shape[1]/atlas_size[1],bitmap.shape[0]/atlas_size[0])
+                font[c['char']] = c
+                x += d * (bitmap.shape[1] + gap)
+                del characters[i]
+                continue
+            i += 1
+        if len(characters) == 0:
+            break
+        if d == 1:
+            x = atlas_size[1]
+            y += 2*characters[0]['size'][1] + gap
+            d = -1
+        else:
+            x = 0
+            y += gap
+            d = 1
+                
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+    texture = glGenTextures(1)
+    glBindTexture(GL_TEXTURE_2D, texture)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, atlas.shape[1], atlas.shape[0], 0, GL_RED, GL_UNSIGNED_BYTE, atlas)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
     glBindTexture(GL_TEXTURE_2D, 0)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
-    font["size"] = size
-    font["line_height"] = int(size * face.ascender / face.height) >> 6
+    font['atlas'] = texture
+    font['size'] = size
+    font['line_height'] = int(size * face.ascender / face.height) >> 6
 
     return font
 
