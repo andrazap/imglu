@@ -574,9 +574,12 @@ class Gui():
             
             # Handle dragging
             start, current, end, consume = self.PointerInput(phase='early')
-            if start is not None and end is None and all([0 <= x <= 1 for x in start]) and self.drag_lock is None:
+            if start is not None and all([0 <= x <= 1 for x in start]) and self.drag_lock is None:
                 consume()
-                return True, lower + (upper - lower) * np.clip((current[0]-sx)/(1-2*sx), 0, 1)
+                if end is None:
+                    return True, lower + (upper - lower) * np.clip((current[0]-sx)/(1-2*sx), 0, 1)
+                else:
+                    return False, value
             
             return False, value
 
