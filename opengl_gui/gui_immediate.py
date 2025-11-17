@@ -19,7 +19,7 @@ class Shaders():
         self.texture_bgr = self.setup(TextureShaderBGR)
         self.texture_rgba = self.setup(TextureShaderRGBA)
         self.texture_r   = self.setup(TextureShaderR)
-        self.loading     = self.setup(LoadingShader)
+        self.portal     = self.setup(PortalShader)
         self.default = self.setup(DefaultShader)
         self.text    = self.setup(TextShader)
         self.circle  = self.setup(CircleShader)
@@ -96,6 +96,9 @@ class Gui():
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(0.3, 0.3, 0.3, 1.0)
+
+        glEnable(GL_STENCIL_TEST)
+        self.stencil_depth = 0
 
         ####
         self.shaders = Shaders()
@@ -193,7 +196,9 @@ class Gui():
         return glfw.window_should_close(self.window)
 
     def clear_screen(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glStencilMask(0xFF)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
+        glStencilMask(0x00)
 
     def swap_buffers(self):
 
@@ -624,3 +629,52 @@ class Gui():
                 return not state
             
             return state
+
+    @contextmanager
+    def Portal(self, show_through=True, radius=200, thickness=10, position=[0,0], scale=[1,1], color=[0,0,0,1.0], background=[0,0,0,0]):
+        shader = self.shaders.portal
+
+        with self.Container(position=position, scale=scale, color=background):
+            wpx, hpx = self.query_container_size_px() # for aspect ratio
+            # check if whole container is visible
+            if radius > wpx/2 and radius > hpx/2:
+                yield
+                return
+
+            glStencilMask(0xFF) # make stencil buffer writable
+            glStencilOp(GL_KEEP, GL_KEEP, GL_INCR) # set behaviour to increment matching pixels
+            self.stencil_depth += 1
+
+            # convert units for shader
+            radius /= hpx
+            thickness /= hpx
+
+            # increment stencil by drawing inner area (part=0) without color
+            if show_through:
+                self.use_program(shader.shader_program)
+                shader.uniform_functions["part"](0)
+                shader.uniform_functions["transform"](self.transform)
+                shader.uniform_functions["color"]([0,0,0,0])
+                shader.uniform_functions["properties"]([self.depth, wpx/hpx, radius, thickness])
+                self.draw()
+
+            # render content
+            glStencilFunc(GL_EQUAL, self.stencil_depth, 0xFF) # need to be within ALL the masks to be drawn
+            glStencilMask(0x00) # make stencil buffer unwritable
+            yield
+            self.stencil_depth -= 1
+            glStencilFunc(GL_LEQUAL, self.stencil_depth, 0xFF)
+
+            # draw ring
+            self.use_program(shader.shader_program)
+            shader.uniform_functions["part"](1)
+            shader.uniform_functions["transform"](self.transform)
+            shader.uniform_functions["color"](color)
+            shader.uniform_functions["properties"]([self.depth, wpx/hpx, radius, thickness])
+            self.draw()
+
+            # clear stencil buffer if this was the root portal
+            if self.stencil_depth == 0:
+                glStencilMask(0xFF)
+                glClear(GL_STENCIL_BUFFER_BIT)
+                glStencilMask(0x00)

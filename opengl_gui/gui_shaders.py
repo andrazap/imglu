@@ -332,16 +332,16 @@ class CircleShader(DefaultShader):
 
         return self
 
-class LoadingShader(ShaderProgram):
+class PortalShader(ShaderProgram):
 
     def __init__(self):
-        super(LoadingShader, self).__init__()
+        super(PortalShader, self).__init__()
 
         self.vs = \
         """
-            #version 450 
+            #version 450
             uniform mat3 transform;
-            uniform float depth;
+            uniform vec4 properties;
 
             layout (location = 0) in vec2 position;
             layout (location = 1) in vec2 texCoordIn;
@@ -351,92 +351,43 @@ class LoadingShader(ShaderProgram):
 
             void main()
             {
-                fragmentPosition = position;
+                // Subtract 0.5 to account for [0,1] vertices
+                fragmentPosition = position - 0.5;
                 texCoord = texCoordIn;
                 vec3 tmp = transform*vec3(position,1.0);
-                gl_Position = vec4(tmp.x,tmp.y,depth,tmp.z);
+                gl_Position = vec4(tmp.x,tmp.y,properties[0],tmp.z);
             }
         """
 
         self.fs = \
         """
-            #version 450 
-            uniform int stage;
-            uniform sampler2D textureSampler;
-            uniform vec4 animation_details;
+            #version 450
+            uniform int part;
+            uniform vec4 properties;
+            uniform vec4 color;
 
             in vec2 fragmentPosition;
             in vec2 texCoord;
             out vec4 fragmentColor;
 
-            // Stage 0
-
-            float t = 2.5f;
-            float scale = 0.3f;
-            float circleSize = 0.2f; 
-            float yoffset = 0.0f; // Centering deppends on top panel size
-
-            float rFrac = 0.11f;
-
-            // Stage 1
-            float r1 = 2.5f;
-
             // Uniform to named variable
-            float time      = animation_details[0];
-            float aspect    = animation_details[1];
-            float timeStage = animation_details[2];
-            float duration  = animation_details[3]; 
-
-            vec3 vicosRed = vec3(226.0/255, 61.0/255, 40.0/255.0);
+            float depth     = properties[0];
+            float aspect    = properties[1];
+            float radius    = properties[2];
+            float thickness = properties[3];
 
             void main()
             {
-                if (stage == 0)
+                float d = length(vec2(fragmentPosition[0]*aspect, fragmentPosition[1]));
+
+                if (part == 0 && d < radius ||
+                    part == 1 && (d <= radius+thickness) && (d >= radius))
                 {
-                    float p = ((sin(time*t*0.5f) + 1.0f)/2)*circleSize + scale;
-                    float zto = (p - scale)/(1.0f - scale);
-
-                    float r0 = p*0.4f;
-                    float r1 = p*0.5f;
-
-                    float fx = fragmentPosition[0]*aspect;
-                    float fy = fragmentPosition[1];
-
-                    float d = fx*fx + (fy + yoffset)*(fy + yoffset);
-                    bool a = (d >= r0) && (d <= r1);
-        
-                    fragmentColor = vec4(vicosRed, a ? 1.0f : 0.0f);
-                }
-                else if ((stage == 1) && (timeStage <= duration))
-                {
-                    float r0 = (((sin((time - timeStage)*t*0.5f) + 1.0f)/2)*circleSize + scale)*0.6f;
-                    
-                    float i = sin(3.14159*timeStage/duration*0.5f);
-                    float rFinal = r0*(1.0f - i) + r1*i;
-                    float rSmall = rFinal*(1.0f - rFrac);
-
-                    float fx = fragmentPosition[0]*aspect;
-                    float fy = fragmentPosition[1] + yoffset;
-
-                    bool a1 = (fx*fx + fy*fy <= rFinal*rFinal) && (fx*fx + fy*fy >= rSmall*rSmall);
-                    bool a2 = (fx*fx + fy*fy < rSmall*rSmall);
-
-                    if (a1)
-                    {
-                        fragmentColor = vec4(vicosRed, 1.0f);
-                    }
-                    else if (a2)
-                    {
-                        fragmentColor = vec4(vec3(texture(textureSampler, texCoord)), 1.0f);
-                    }
-                    else
-                    {
-                        fragmentColor = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-                    }
+                    fragmentColor = color;
                 }
                 else
                 {
-                    fragmentColor = vec4(vec3(texture(textureSampler, texCoord)), 1.0f);
+                    discard;
                 }
             }
         """
@@ -444,13 +395,13 @@ class LoadingShader(ShaderProgram):
     def generate_uniform_functions(self):
 
         self.transform_uniform_location = glGetUniformLocation(self.shader_program, "transform")
-        self.stageUniformLocation   = glGetUniformLocation(self.shader_program, "stage")
-        self.depth_uniform_location = glGetUniformLocation(self.shader_program, "depth")
-        self.animation_detailsUniformLocation = glGetUniformLocation(self.shader_program, "animation_details")
+        self.part_uniform_location   = glGetUniformLocation(self.shader_program, "part")
+        self.properties_uniform_location = glGetUniformLocation(self.shader_program, "properties")
+        self.color_uniform_location = glGetUniformLocation(self.shader_program, "color")
 
         self.uniform_functions["transform"] = lambda M: glUniformMatrix3fv(self.transform_uniform_location, 1, GL_TRUE, M)
-        self.uniform_functions["stage"]     = lambda S: glUniform1i(self.stageUniformLocation, S)
-        self.uniform_functions["depth"]     = lambda D: glUniform1f(self.depth_uniform_location, D)
-        self.uniform_functions["animation_details"] = lambda D: glUniform4fv(self.animation_detailsUniformLocation, 1, D)
+        self.uniform_functions["part"]     = lambda P: glUniform1i(self.part_uniform_location, P)
+        self.uniform_functions["properties"] = lambda P: glUniform4fv(self.properties_uniform_location, 1, P)
+        self.uniform_functions["color"] = lambda C: glUniform4fv(self.color_uniform_location, 1, C)
 
         return self
