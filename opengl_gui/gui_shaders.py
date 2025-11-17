@@ -168,6 +168,53 @@ class TextureShaderBGR(ShaderProgram):
 
         return self
 
+class TextureShaderRGBA(ShaderProgram):
+
+    def __init__(self):
+        super(TextureShaderRGBA, self).__init__()
+
+        self.vs = \
+        """
+            #version 450 
+            uniform mat3 transform;
+            uniform vec2 properties;
+
+            layout (location = 0) in vec2 position;
+            layout (location = 1) in vec2 texCoordIn;
+            out vec2 texCoordOut;
+            void main()
+            {
+                float zoom = properties[1];
+                vec3 tmp = transform*vec3(position,1.0);
+                gl_Position = vec4(tmp.x,tmp.y,properties[0],tmp.z);
+                texCoordOut = (texCoordIn + (zoom - 1)/2)/zoom;
+            }
+        """
+
+        self.fs = \
+        """
+            #version 450 
+            uniform sampler2D text;
+
+            in vec2 texCoordOut;
+            out vec4 fragColor;
+
+            void main()
+            {
+                fragColor = vec4(texture(text, texCoordOut));
+            }
+        """
+
+    def generate_uniform_functions(self):
+
+        self.transform_uniform_location  = glGetUniformLocation(self.shader_program, "transform")
+        self.properties_uniform_location = glGetUniformLocation(self.shader_program, "properties")
+
+        self.uniform_functions["transform"] = lambda M: glUniformMatrix3fv(self.transform_uniform_location, 1, GL_TRUE, M)
+        self.uniform_functions["properties"] = lambda P: glUniform2fv(self.properties_uniform_location, 1, P)
+  
+        return self
+
 class TextureShaderR(ShaderProgram):
 
     def __init__(self):

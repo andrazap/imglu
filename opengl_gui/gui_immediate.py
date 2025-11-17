@@ -17,6 +17,7 @@ class Shaders():
 
     def __init__(self):
         self.texture_bgr = self.setup(TextureShaderBGR)
+        self.texture_rgba = self.setup(TextureShaderRGBA)
         self.texture_r   = self.setup(TextureShaderR)
         self.loading     = self.setup(LoadingShader)
         self.default = self.setup(DefaultShader)
@@ -211,39 +212,48 @@ class Gui():
     def query_container_size_px(self):
         return self.transform[0,0]*self.width/2, abs(self.transform[1,1]*self.height/2)
 
-    def create_texture(self, data):
-        texture = glGenTextures(1)
-        single_channel = False
-        
-        if len(data.shape) == 2:
-            single_channel = True
-            data = data[:,:,np.newaxis]
-        elif len(data.shape) != 3:
-            raise ValueError('Unsupported image dimensions')
+    def texture(self, old, data):
+        if old == None:
+            tex = glGenTextures(1)
+            
+            if len(data.shape) == 2:
+                data = data[:,:,np.newaxis]
+            elif len(data.shape) != 3:
+                raise ValueError('Unsupported image dimensions')
 
-        glBindTexture(GL_TEXTURE_2D, texture)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glBindTexture(GL_TEXTURE_2D, tex)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
-        if single_channel:
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-            flag = GL_RED
-            shader = self.shaders.texture_r
+            channels = data.shape[2]
+            if channels == 1:
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+                flag = GL_RED
+                shader = self.shaders.texture_r
+            elif channels == 3:
+                flag = GL_RGB
+                shader = self.shaders.texture_bgr
+            elif channels == 4:
+                flag = GL_RGBA
+                shader = self.shaders.texture_rgba
+            glBindTexture(GL_TEXTURE_2D, tex)
+            glTexImage2D(GL_TEXTURE_2D, 0, flag, data.shape[1], data.shape[0], 0, flag, GL_UNSIGNED_BYTE, data)
+            glGenerateTextureMipmap(tex)
+            return shader, tex, data
         else:
-            flag = GL_RGB
-            shader = self.shaders.texture_bgr
-        glBindTexture(GL_TEXTURE_2D, texture)
-        glTexImage2D(GL_TEXTURE_2D, 0, flag, data.shape[1], data.shape[0],
-                0, flag, GL_UNSIGNED_BYTE, data)
-        glGenerateTextureMipmap(texture)
-        return shader, texture, data.shape
-    
-    def update_texture(self, texture, data):
-        glBindTexture(GL_TEXTURE_2D, texture[1])
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, data.shape[1], data.shape[0], GL_RGB, GL_UNSIGNED_BYTE, data)
-        glGenerateTextureMipmap(texture[1])
+            shader, tex, mat = old
+            if data is not mat:
+                glBindTexture(GL_TEXTURE_2D, tex)
+                channels = data.shape[2]
+                flag = GL_RGB if channels == 3 else GL_RED if channels == 1 else GL_RGBA
+                if data.shape == mat.shape:
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, data.shape[1], data.shape[0], flag, GL_UNSIGNED_BYTE, data)
+                else:
+                    glTexImage2D(GL_TEXTURE_2D, 0, flag, data.shape[1], data.shape[0], 0, flag, GL_UNSIGNED_BYTE, data)
+                glGenerateTextureMipmap(tex)
+            return shader, tex, data
 
     @contextmanager
     def Container(self, position=[0,0], scale=[1,1], color=[0,0,0,0], depth=0, alpha=1.0):
@@ -414,11 +424,12 @@ class Gui():
     
     def Image(self, data, position=[0,0], scale=[1,1], color=[1,1,1,1], alpha=1, stretch=False, padding=0, zoom=1):
         if type(data) == tuple:
-            shader, texture, shape = data
+            shader, texture, mat = data
             cleanup = False
         else:
-            shader, texture, shape = self.create_texture(data)
+            shader, texture, mat = self.texture(None, data)
             cleanup = True
+        shape = mat.shape
 
         position = position + scale * np.array([0,1])
         scale = scale * np.array([1,-1])
@@ -447,12 +458,14 @@ class Gui():
 
         glBindTexture(GL_TEXTURE_2D, texture)
         shader.uniform_functions['transform'](transform)
-        if 'depth' in shader.uniform_functions:
+        if shader == self.shaders.texture_r:
             shader.uniform_functions['color'](color)
             shader.uniform_functions['depth'](self.depth)
             shader.uniform_functions['zoom'](zoom)
-        else:
+        elif shader == self.shaders.texture_bgr:
             shader.uniform_functions['properties']([self.depth, alpha, zoom])
+        elif shader == self.shaders.texture_rgba:
+            shader.uniform_functions['properties']([self.depth, zoom])
         
         self.draw()
         if cleanup:
