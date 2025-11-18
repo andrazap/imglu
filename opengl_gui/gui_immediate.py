@@ -631,10 +631,11 @@ class Gui():
                 shader.uniform_functions['color'](color)
                 self.draw()
             
-            start, _, end, consume = self.PointerInput(phase='early')
-            if start is not None and end is not None and all([0 <= x <= 1 for x in [*start, *end]]):
+            start, current, end, consume = self.PointerInput(phase='early', time_limit=0.5)
+            if start is not None and all([0 <= x <= 1 for x in [*start, *current]]):
                 consume()
-                return not state
+                if end is not None:
+                    return not state
             
             return state
 
