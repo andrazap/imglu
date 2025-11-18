@@ -162,7 +162,7 @@ class Gui():
 
     def resize_event_callback(self, window, width, height) -> None:
 
-        glViewport(0, 0, self.width, self.height)
+        glViewport(0, 0, width, height)
 
         self.width  = width
         self.height = height 
@@ -172,6 +172,12 @@ class Gui():
 
         if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
             glfw.set_window_should_close(window, glfw.TRUE)
+        if key == glfw.KEY_F11 and action == glfw.PRESS:
+            if self.fullscreen:
+                glfw.set_window_monitor(window, None, 0, 0, self.window_width//2, self.window_height//2, 0)
+            else:
+                glfw.set_window_monitor(window, glfw.get_primary_monitor(), 0, 0, self.window_width, self.window_height, 0)
+            self.fullscreen = not self.fullscreen
 
     def use_program(self, program):
         if self.current_program != program:
