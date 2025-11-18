@@ -523,13 +523,15 @@ class Gui():
                 if side == 'left' or side == 'top':
                     if pos[prop] <= cur2[prop] <= pos[prop] + scale[prop] + lip_thickness:
                         grabbed = True
-                        value += (cur2[prop] - cur1[prop])/movement_range
+                        boost = 0 if cur2[prop] <= pos[prop] + scale[prop] else 0.05*lip_thickness
+                        value += (cur2[prop] - cur1[prop] + boost)/movement_range
                         self.drag_lock = 'drawer'
                         consume()
                 else:
                     if pos[prop] - lip_thickness <= cur2[prop] <= pos[prop] + scale[prop]:
                         grabbed = True
-                        value -= (cur2[prop] - cur1[prop])/movement_range
+                        boost = 0.05*lip_thickness if cur2[prop] < pos[prop] else 0
+                        value -= (cur2[prop] - cur1[prop] - boost)/movement_range
                         self.drag_lock = 'drawer'
                         consume()
 
