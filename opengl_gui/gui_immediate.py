@@ -507,6 +507,7 @@ class Gui():
         
         prop = 0 if side == 'right' or side == 'left' else 1 # 0=x, 1=y
         
+        lip_thickness += 0.5 - abs(value - 0.5)
         # Position drawer according to value
         movement_range = scale[prop] - offset_content
         if side == 'top':
