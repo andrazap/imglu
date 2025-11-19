@@ -30,8 +30,9 @@ class Gui():
         fullscreen: bool = False,
         width:  int = 1920,
         height: int = 1080,
+        text_size: int = 2,
         font: str = './Metropolis-SemiBold.otf') -> None:
-        self.aspect_ratio = width/height
+        self.text_size = text_size # this is a global multiplier for text size
 
         if not glfw.init():
             print('Error initializing glfw...')
@@ -131,7 +132,8 @@ class Gui():
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 16, ctypes.c_void_p(8))
         glEnableVertexAttribArray(1)
         
-        self.font = load_font(font)
+        self.font_size = 64 * 50
+        self.font = load_font(font, self.font_size)
     
     def mouse_position_callback(self, window, x_pos, y_pos) -> None:
         self.mouse_x = 2*x_pos/self.width - 1
@@ -285,7 +287,7 @@ class Gui():
             self.depth = old_depth
 
     @cache
-    def calculate_positions(self, content, align, scale, text_size):
+    def calculate_positions(self, content, align, text_size):
         font = self.font
         space = int(np.ceil((font['size'] >> 6)*0.20))
 
@@ -293,11 +295,7 @@ class Gui():
         x = -min(init_offset,0)
 
         chars = []
-        dims = np.array([self.width, self.height])
-
-        # adjust text size with container scale so it becomes scale independent
-        # note: we multiply the Text element's scale so not everything is in the context manager
-        text_size /= np.array([self.transform[0,0]*scale[0], self.transform[1,1]*scale[1]])
+        text_size = np.array(text_size)
 
         for c in content:
             
@@ -309,14 +307,14 @@ class Gui():
                 ['advance', 'bearing', 'size', 'atlas_info']]
             
             chars.append((
-                [x + bearing[0], bearing[1] - size[1]] / dims * text_size,
-                size / dims * text_size,
+                [x + bearing[0], bearing[1] - size[1]] * text_size,
+                size * text_size,
                 atlas_info,
             ))
             x += advance[0] >> 6
 
-        used_space = x*text_size[0] / self.width
-        font_height_in_container_units = font['line_height']/dims[1]*-text_size[1]
+        used_space = x*text_size[0]
+        font_height_in_container_units = font['line_height']*-text_size[1]
         # align center by default
         offset = [0.5 - used_space/2, 0.5 + font_height_in_container_units/2]
         # handle vertical alignment
@@ -334,7 +332,13 @@ class Gui():
 
     def Text(self, content, align='', text_size=1, color=[0,0,0,1], position=[0,0], scale=[1,1]):
         
-        chars, offset = self.calculate_positions(content, align, tuple(scale), text_size)
+        # self.text_size is a global multiplier you can set when constructing the gui
+        text_size = self.text_size * text_size / self.font_size * np.array([1, self.width/self.height])
+        # adjust text size with container scale so it becomes scale independent
+        # note: we multiply the Text element's scale so not everything is in the context manager
+        text_size /= np.array([self.transform[0,0]*scale[0], self.transform[1,1]*scale[1]])
+        
+        chars, offset = self.calculate_positions(content, align, tuple(text_size))
 
         with self.Container(position=position, scale=scale):
             self.use_program(self.shaders.text.shader_program)
