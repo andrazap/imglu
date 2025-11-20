@@ -523,17 +523,18 @@ class Gui():
         # Process input
         start, cur1, _, _ = self.PointerInput(phase='late')
         _, cur2, end, consume = self.PointerInput()
-        if start is not None and end is None:
-            if offset_edge <= cur2[1-prop] <= offset_edge + scale[1-prop]:
+        mpos = start if self.drag_lock is None else cur2
+        if start is not None and end is None and (self.drag_lock is None or self.drag_lock == 'drawer'):
+            if offset_edge <= mpos[1-prop] <= offset_edge + scale[1-prop]:
                 if side == 'left' or side == 'top':
-                    if pos[prop] <= cur2[prop] <= pos[prop] + scale[prop] + lip_thickness:
+                    if pos[prop] <= mpos[prop] <= pos[prop] + scale[prop] + lip_thickness:
                         grabbed = True
                         boost = 0 if cur2[prop] <= pos[prop] + scale[prop] else 0.05*lip_thickness
                         value += (cur2[prop] - cur1[prop] + boost)/movement_range
                         self.drag_lock = 'drawer'
                         consume()
                 else:
-                    if pos[prop] - lip_thickness <= cur2[prop] <= pos[prop] + scale[prop]:
+                    if pos[prop] - lip_thickness <= mpos[prop] <= pos[prop] + scale[prop]:
                         grabbed = True
                         boost = 0.05*lip_thickness if cur2[prop] < pos[prop] else 0
                         value -= (cur2[prop] - cur1[prop] - boost)/movement_range
