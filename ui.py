@@ -3,21 +3,24 @@ from opengl_gui.gui_helper import rasterize_svg
 
 # Global items will get rerun on save
 icon = rasterize_svg(path = "./icon.svg", width = 256, height = 256)
-class ViCoS():
+class Color():
     RED = [226.0/255, 61.0/255, 40.0/255.0, 0.75]
 
-def setup(state):
-    state.i = 0
-    state.drawer = 0
-    state.sliderVal = 0
-    state.toggle = False
-    return Gui(
+class State:
+    i = 0
+    drawer = 0
+    sliderVal = 0
+    toggle = False
+
+def setup():
+    gui = Gui(
         fullscreen = False,
         width = 960,
         height = 690,
         font="./Metropolis-SemiBold.otf")
+    return gui, State()
 
-def draw(gui:Gui, state):
+def draw(gui: Gui, state):
     with gui.Container(position=[0,0], scale=[1,1], color=[0,1,0,1]):
         gui.Text(str(state.sliderVal), align='top')
         with gui.Grid(position=[0,0], scale=[0.5,0.5], rows=[0.3,None], cols=[None, None], gap=[0.1,0.1]) as g:
@@ -34,7 +37,7 @@ def draw(gui:Gui, state):
         
         with gui.Container(position=[0.25,0.5], scale=[0.5,0.5], color=[0.5,0.5,0.5,1]):
             gui.Text('Wow gee wilicker', align='right')
-            if gui.Button('Yippie!', color=ViCoS.RED):
+            if gui.Button('Yippie!', color=Color.RED):
                 print('Pressed', state.i)
                 state.i += 1
         with gui.Portal(position=[0.25,0.25], radius=state.sliderVal, show_through=True, scale=[0.75,0.75]):

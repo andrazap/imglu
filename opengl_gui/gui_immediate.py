@@ -27,6 +27,7 @@ class Shaders():
 class Gui():
 
     def __init__(self,
+        title: str = 'opengl_gui window',
         fullscreen: bool = False,
         width:  int = 1920,
         height: int = 1080,
@@ -74,7 +75,7 @@ class Gui():
         self.width  = width  if width  <= 3840 else 3840
         self.height = height if height <= 2160 else 2160
 
-        self.window = glfw.create_window(width, height, 'VICOS Demo', glfw.get_primary_monitor() if self.fullscreen else None, None)
+        self.window = glfw.create_window(width, height, title, glfw.get_primary_monitor() if self.fullscreen else None, None)
         self.window_aspect_ratio = self.width/self.height
 
         glfw.make_context_current(self.window)

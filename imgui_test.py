@@ -4,11 +4,7 @@ import ui
 import traceback
 import time
 
-class State:
-    pass
-state = State()
-
-gui = ui.setup(state)
+gui, *rest = ui.setup()
 
 last_modified = os.path.getmtime('./ui.py')
 error = False
@@ -19,7 +15,7 @@ while not gui.should_window_close():
 
     if not error:
         try:
-            ui.draw(gui, state)
+            ui.draw(gui, *rest)
         except Exception:
             print(traceback.format_exc())
             error = True
