@@ -585,7 +585,9 @@ class Gui():
         with self.Container(position=position, scale=scale, depth=depth):
             yield layout
 
-    def Slider(self, value, lower=0, upper=1, thumb_size = 35, track_color=[0.5,0.5,0.5,1], thumb_color=[1,1,1,1], position=[0,0], scale=[1,1]):
+    def Slider(self, value, lower=0, upper=1, thumb_size = None, track_color=[0.5,0.5,0.5,1], thumb_color=[1,1,1,1], position=[0,0], scale=[1,1]):
+        if thumb_size is None:
+            thumb_size = int(0.02*self.width)
         wpx, hpx = self.query_container_size_px()
         yscale = thumb_size / hpx
         centered = position[1] + scale[1] / 2 - yscale / 2
