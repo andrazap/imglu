@@ -179,7 +179,9 @@ class Gui():
             if self.fullscreen:
                 glfw.set_window_monitor(window, None, 0, 0, self.window_width//2, self.window_height//2, 0)
             else:
-                glfw.set_window_monitor(window, glfw.get_primary_monitor(), 0, 0, self.window_width, self.window_height, 0)
+                monitor = glfw.get_primary_monitor()
+                mode = glfw.get_video_mode(monitor)
+                glfw.set_window_monitor(window, monitor, 0, 0, *mode.size, mode.refresh_rate)
             self.fullscreen = not self.fullscreen
 
     def use_program(self, program):
