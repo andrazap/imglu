@@ -1,8 +1,8 @@
-from opengl_gui.gui_immediate import Gui
-from opengl_gui.gui_helper import rasterize_svg
+from imglu.gui_immediate import Gui
+from imglu.gui_helper import rasterize_svg
 
 # Global items will get rerun on save
-icon = rasterize_svg(path = "./icon.svg", width = 256, height = 256)
+# icon = rasterize_svg(path = "./icon.svg", width = 256, height = 256)
 class Color():
     RED = [226.0/255, 61.0/255, 40.0/255.0, 0.75]
 
@@ -31,7 +31,8 @@ def draw(gui: Gui, state):
         gui.Text('Wow gee', scale=[0.25,0.25])
         # we only need to set it once, otherwise it is locked in that state
         with gui.Drawer(state.drawer, scale=[0.5,0.5], side='top', lip_thickness=0.2, color=[1,0.5,0,1], depth=1) as (state.drawer, grabbed):
-            gui.Image(icon)
+            gui.Text('Hi')
+            # gui.Image(icon)
         if gui.Button('Close drawer' if state.drawer > 0.5 else 'Open drawer', position=[0, 0.75], scale=[0.25,0.25], color=[0,0,1,1]):
             state.drawer = 0.49 if state.drawer > 0.5 else 0.51
         

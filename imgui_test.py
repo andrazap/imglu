@@ -24,7 +24,6 @@ while not gui.should_window_close():
     if current_modified != last_modified:
         last_modified = current_modified
         try:
-            gui._drawer_state = {}
             importlib.reload(ui)
             error = False
         except Exception as e:

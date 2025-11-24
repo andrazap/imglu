@@ -32,7 +32,7 @@ class Gui():
         width:  int = 1920,
         height: int = 1080,
         text_size: int = 2,
-        font: str = './Metropolis-SemiBold.otf') -> None:
+        font: str = None) -> None:
         self.text_size = text_size # this is a global multiplier for text size
 
         if not glfw.init():
