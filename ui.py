@@ -20,6 +20,9 @@ def setup():
         font="./Metropolis-SemiBold.otf")
     return gui, State()
 
+def cleanup(gui, state):
+    print('Exiting')
+
 def draw(gui: Gui, state):
     with gui.Container(position=[0,0], scale=[1,1], color=[0,1,0,1]):
         gui.Text(str(state.sliderVal), align='top')
