@@ -434,7 +434,7 @@ class Gui():
                 self.Text(text, align=align, color=color, text_size=text_size)
             
             start, current, end, consume = self.PointerInput(phase='early', time_limit=0.5)
-            if start is not None and all([0 <= x <= 1 for x in [*start, *current]]):
+            if start is not None and all([0 <= x <= 1 for x in [*start, *current]]) and np.sum(np.abs(np.array(start) - current)) < 0.25:
                 consume()
                 return end is not None
         
@@ -646,7 +646,7 @@ class Gui():
                 self.draw()
             
             start, current, end, consume = self.PointerInput(phase='early', time_limit=0.5)
-            if start is not None and all([0 <= x <= 1 for x in [*start, *current]]):
+            if start is not None and all([0 <= x <= 1 for x in [*start, *current]]) and np.sum(np.abs(np.array(start) - current)) < 0.25:
                 consume()
                 if end is not None:
                     return not state
