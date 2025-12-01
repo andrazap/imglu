@@ -549,6 +549,9 @@ class Gui():
 
         with self.Container(position=pos, scale=scale, color=color, alpha=alpha, depth=depth):
             yield np.clip(value, 0, 1), grabbed
+            start, _, end, consume = self.PointerInput(phase='early')
+            if start is not None and end is not None and all([0 <= x <= 1 for x in [*start, *end]]):
+                consume()
     
     def _grid_helper(self, parts):
         total = 0
