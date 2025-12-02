@@ -8,8 +8,8 @@ import numpy as np
 import time
 from functools import cache
 
-from opengl_gui.gui_shaders import *
-from opengl_gui.gui_helper import load_font
+from imglu.gui_shaders import *
+from imglu.gui_helper import load_font
 
 class Shaders():
     def setup(self, shader):
@@ -27,7 +27,7 @@ class Shaders():
 class Gui():
 
     def __init__(self,
-        title: str = 'opengl_gui window',
+        title: str = 'imglu window',
         fullscreen: bool = False,
         width:  int = 1920,
         height: int = 1080,
